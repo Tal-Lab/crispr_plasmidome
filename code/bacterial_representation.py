@@ -30,8 +30,8 @@ tables = f"{path}/data_calculations"
 Path(visuals).mkdir(parents=True, exist_ok=True)
 
 # working files
-blast_results = r"../res/BLASTp_resultsRatio.csv"
-plsdb_meta = r"../res/plsdb.tsv"
+blast_results = r"../res/BLASTp_resultsRatio.zip"
+plsdb_meta = r"../res/plsdb.zip"
 spacers_meta = r"../res/spacer_seqName.fsa"
 
 # managing metadata for spacers db
@@ -42,7 +42,6 @@ def search_Entrez (x):
     try:
         print("Entered search_Entrez function with %s" % x)
         handle = Entrez.efetch(db="nucleotide", id= x, rettype="gb", retmode="text")
-        print(handle)
         record = SeqIO.read(handle, "genbank")
         print(record.annotations["taxonomy"], record.annotations["organism"])
         handle.close()
@@ -84,24 +83,22 @@ def DF_from_fasta():
             ind = np.where(unique_id == id)
             print("The index is %d" % ind)
             sp, tax = search_Entrez(id)
-            #tax = search_Entrez(id)
-            print(tax)
-            print(sp)
             df = pd.DataFrame({'ID':id, 'Taxonomy':[tax], 'Species':sp})
-            print(df)
             df.to_csv(csv_file, index = False, header=False, mode = 'a')
             taxon.append((tax))
             species.append(sp)
+    print(len(taxon))
+    print(len(unique_id))
+    print(len(species))
     taxon_df = pd.DataFrame({'ID':unique_id, 'Taxonomy':taxon, 'Species':species})
-    taxon_csv2 = f'{tables}/taxon_efetch2.csv'
-    taxon_df.to_csv(taxon_csv2, index = False)
-    df_final = pd.merge(df_spacers, taxon_df, on = 'ID', how = 'inner')
+    print(taxon_df)
+    df_final = pd.merge(df_spacers, taxon_df, on = 'ID', how = 'right')
     print(df_spacers.shape)
     final_csv = f'{tables}/blast_result.csv'
     df_final.to_csv(final_csv, index = False)
     print(df_final)
     print(df_final.shape)
-    return df_spacers
+    return df_final
 DF_from_fasta()
 
 # metadata for plasmid db
