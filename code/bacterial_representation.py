@@ -150,10 +150,10 @@ def prob_func(x, level, popul, df_popul, df_blast):
     level_freq = (A/N)*100
     level_blast_freq = (k/n)*100
     #print (pmf_cog)
-    print('The probability of getting %d %s with host %s at %s level out of %d hits is %s.' % (k, popul, x, level, n, "{:.2e}".format(pmf_level)))
-    print('The probability of getting %d or more %s with host %s at %s level out of %d hits is %s.' % (k, popul, x, level, n, "{:.2e}".format(pval)))
-    print('The frequency of %s with host %s at %s level in %s-database: (%d/%d)*100=%f' % (popul, x, level, popul, A, N, round(level_freq,2)))
-    print('The frequency of %s with host %s at %s in our blast results: (%d/%d)*100=%f' % (popul, x, level, k, n, round(level_blast_freq, 2)))
+    print('The probability of getting %d %s with host %s at %s level out of %d hits is %s.' % (k, popul, x, level.capitalize(), n, "{:.2e}".format(pmf_level)))
+    print('The probability of getting %d or more %s with host %s at %s level out of %d hits is %s.' % (k, popul, x, level.capitalize(), n, "{:.2e}".format(pval)))
+    print('The frequency of %s with host %s at %s level in %s-database: (%d/%d)*100=%f' % (popul, x, level.capitalize(), popul, A, N, round(level_freq,2)))
+    print('The frequency of %s with host %s at %s in our blast results: (%d/%d)*100=%f' % (popul, x, level.capitalize(), k, n, round(level_blast_freq, 2)))
     #not working
     prob = hypergeom.pmf(N, A, n, k)
     print(prob)
