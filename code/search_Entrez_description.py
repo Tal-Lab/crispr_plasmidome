@@ -50,7 +50,7 @@ def search_Entrez (x):
         return "Error"
 
 #Apply function on id's column from the file
-BLASTn_with_metadata ["description"]= BLASTn_with_metadata["unique"].apply(search_Entrez)
+BLASTn_with_metadata ["description"]= BLASTn_with_metadata["unique_id"].apply(search_Entrez)
 
 def search_plasmid_or_not (x):
     try:
