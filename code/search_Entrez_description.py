@@ -15,7 +15,7 @@ import os, re
 from pathlib import Path
 
 #Restrict request to only ask for HTTP/1.0
-http.client.HTTPConnection._http_vsn = 10
+http.client.HTTPConnection._http_vsn = 20
 http.client.HTTPConnection._http_vsn_str = 'HTTP/1.0'
 
 # Cluster
@@ -56,11 +56,13 @@ def search_plasmid_or_not (x):
     try:
         find = 'plasmid'
         if find in x:
+            print(x)
             return find
         else:
+            print(x)
             return "not plasmid"
     except ValueError:
         return "Error"
 
-BLASTn_with_metadata ["pplasmid_or_not"]= BLASTn_with_metadata ["description"].apply(search_plasmid_or_not)
+BLASTn_with_metadata ["plasmid_or_not"]= BLASTn_with_metadata ["description"].apply(search_plasmid_or_not)
 BLASTn_with_metadata.to_csv(f"{tables}/plasmid_or_not.csv")

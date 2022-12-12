@@ -8,7 +8,6 @@ Author: Lucy
 Retrieving ORFeome for unique plasmids with hits to spacers
 '''
 
-
 ### importing modules
 import pandas as pd
 import numpy as np
@@ -48,7 +47,7 @@ def search_Entrez (x):
     '''getting orfeome for each spacer-barer id'''
     logging.debug("Entering search_Entrez function")
     Entrez.email = email  # Tell NCBI who you are
-    Entrez.sleep_between_tries = 5  #Tell NCBI delay, in seconds, before retrying a request
+    Entrez.sleep_between_tries = 20  #Tell NCBI delay, in seconds, before retrying a request
     try:
         logging.debug("############## Obtaining proteins for %s ##############", x)
         handle = Entrez.efetch(db="nuccore", id= x, rettype="fasta_cds_aa", retmode="text")
@@ -75,8 +74,8 @@ def search_Entrez (x):
         #print(record.annotations["structured_comment"])
         handle.close()
         return df
-    except ValueError:
-        return "Error"
+    except Exception as e:
+        print(e)
 
 def plasmid_id():
     logging.debug("Entering plasmid_id function")
@@ -89,10 +88,13 @@ def gb_retriever():
     logging.debug("Entering gb_retriever function")
     id_list = plasmid_id()
     all_proteins = pd.DataFrame({'ID': [], 'P_Name': [], 'Sequence': []})
-    for pl_id in id_list:
-        logging.info("### Working with plasmid %s ###", str(id_list.index(pl_id)))
-        all_info = search_Entrez(pl_id)
-        all_proteins=all_proteins.append(all_info)
+    try:
+        for pl_id in id_list:
+            logging.info("### Working with plasmid %s ###", str(id_list.index(pl_id)))
+            all_info = search_Entrez(pl_id)
+            all_proteins=all_proteins.append(all_info)
+    except Exception as e:
+        print(e)
     return all_proteins
 
 def df_to_fasta():
