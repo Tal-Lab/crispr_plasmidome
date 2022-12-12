@@ -5,7 +5,7 @@ Created on 19/07/2022 15:44
 Author: Lucy
 """
 '''
-Function for hypergeomatric distribution to detect whether families/classes are overrepresented in db.
+Function for family abundance in the database to analyze whether families/classes are overrepresented in db.
 '''
 
 ### importing modules
@@ -24,14 +24,14 @@ email = "androsiu@post.bgu.ac.il"  # Tell NCBI who you are
 # Windows
 #path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
 # macOS
-#path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
+path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
 # Cluster
-path = r"/gpfs0/tals/projects/Analysis/Lucy_plasmidome/Plasmidome/CRISPR"
+#path = r"/gpfs0/tals/projects/Analysis/Lucy_plasmidome/Plasmidome/CRISPR"
 
 # working directories
 visuals = f"{path}/visualisations"
 tables = f"{path}/data_calculations"
-resource = f"{path}/res"
+resource = r"../res"
 Path(visuals).mkdir(parents=True, exist_ok=True)
 
 # working files
@@ -92,14 +92,26 @@ def DF_from_fasta():
     if not os.path.isfile(final_csv) or os.stat(final_csv).st_size == 0:
         df_final.to_csv(final_csv, index = False)
     return df_final
-#DF_from_fasta()
 
 def plsdb():
     # metadata for plasmid db
     plsdb_hosts = pd.read_csv(plsdb_meta, delimiter='\t', header=0,  error_bad_lines=False ,usecols=[1,28 ,30,32 , 34, 36, 38, 40])
-    #print(plsdb_hosts)
+    print(plsdb_hosts)
+    all_recs = len(plsdb_hosts)
+    families = plsdb_hosts['taxon_family_name'].unique()
+    frequencies = []
+    for family in families:
+        fam_recs = plsdb_hosts.loc[plsdb_hosts['taxon_family_name'] == family]
+        recs = len(fam_recs)
+        print("There are %d records with family %s" % (recs, family))
+        freq = (recs/all_recs)*100
+        print("Frequency of family %s is %f" % (family, round(freq,1)))
+        frequencies.append(round(freq,3))
+    freq_df = pd.DataFrame({'Family':families, 'Frequency': frequencies})
+    freq_df.sort_values(by='Frequency', ascending = False, inplace = True)
+    abund = freq_df.head(1)
+    print("The most abundant family is %s with frequency %s" % (abund.iloc[0]['Family'], abund.iloc[0]['Frequency']))
     return plsdb_hosts
-
 
 def blast_res():
     # our results
@@ -142,23 +154,10 @@ def prob_func(x, level, popul, df_popul, df_blast):
     k = len (df_blast)
     print(k)
 
-    print(N, A, n, k)
-    rv = hypergeom(N, A, n)
-    pmf_level = rv.pmf(k)
-    #print(pmf_level)
-    pval = hypergeom.sf(k-1, N, A, n)
-    #print(pval)
-
     level_freq = (A/N)*100
     level_blast_freq = (k/n)*100
-    #print (pmf_cog)
-    #print('The probability of getting %d %s with host %s at %s level out of %d hits is %s.' % (k, popul, x, level.capitalize(), n, "{:.2e}".format(pmf_level)))
-    #print('The probability of getting %d or more %s with host %s at %s level out of %d hits is %s.' % (k, popul, x, level.capitalize(), n, "{:.2e}".format(pval)))
     print('The frequency of %s with host %s at %s level in %s-database: (%d/%d)*100=%f' % (popul, x, level.capitalize(), popul, A, N, round(level_freq,2)))
     print('The frequency of %s with host %s at %s in our blast results: (%d/%d)*100=%f' % (popul, x, level.capitalize(), k, n, round(level_blast_freq, 2)))
-    #not working
-    #prob = hypergeom.pmf(N, A, n, k)
-    #print(prob)
     return level_freq, level_blast_freq
 
 def getting_levels(subj):
@@ -185,6 +184,8 @@ def getting_probability(subj, df_popul):
         for taxa in level_list:
             prob_func(taxa, level, subj, df_popul, df_blast)
 
-getting_probability('plasmids', plsdb())
-getting_probability('spacers', plsdb())
+plsdb()
+#DF_from_fasta()
+#getting_probability('plasmids', plsdb())
+#getting_probability('spacers', DF_from_fasta())
 
