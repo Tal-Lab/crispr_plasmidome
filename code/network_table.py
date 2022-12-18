@@ -13,6 +13,8 @@ import ast, random
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import *
+from mobility_analysis import read_copla as mob
+from mobility_analysis import mob_grades as grades
 
 pd.set_option('display.max_columns', None)
 
@@ -24,9 +26,9 @@ pd.set_option('display.max_columns', None)
 ### paths
 # uncomment relevant path to OS
 # Windows
-# path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
+path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
 # macOS
-path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
+#path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
 # Cluster
 # path = r"/gpfs0/tals/projects/Analysis/Lucy_plasmidome/Plasmidome/CRISPR"
 
@@ -45,9 +47,9 @@ def colors_gen(x):
     all_colors = []
     i = 0
     while i < x:
-        r = random.randint(1, 255)
-        g = random.randint(1, 255)
-        b = random.randint(1, 255)
+        r = random.randint(0, 255)
+        g = random.randint(0, 255)
+        b = random.randint(0, 255)
         rgb = f'{r}, {g}, {b}'
         if rgb != '0,152,152' and rgb not in all_colors:
             all_colors.append(rgb)
@@ -223,10 +225,11 @@ def visual():
     plt.show()
 
 #visual()
-def read_mobility():
-    df = pd.read_csv(mobility, header = 0, index_col = 0)
-    df = df[['qseqid', 'MOB']]
-    return df
+def mob_grades():
+    mob_df = mob()
+    mob_df = mob_df.groupby('Plasmid').agg(MOB = ('MOB', ','.join)).reset_index()
+    grade_df = grades()
+    return [mob_df, grade_df]
 
 def df_family_top30():
     df = pd.read_csv(blast_results)
@@ -237,37 +240,90 @@ def df_family_top30():
     df.Family.fillna(df['plasmid family'], inplace = True)
     df = df[['qseqid', 'Family', 'Phylum']]
     df = df.drop_duplicates()
+    ### getting top 30 abundant families and merging others into OTHER
     df['count'] = df.groupby('Family')['Family'].transform('count')
     df.sort_values('count', ascending = False, inplace = True)
-    unique_fams = df['Family'].unique()[:30]
-    df = df[df['Family'].isin(unique_fams )]
-    ### setting cutoff for families with low abundance
+    top30_fams = df['Family'].unique().tolist()[:30]
+    df['Family'] = df['Family'].apply(lambda x: x if x in top30_fams else 'Other')
+    ### counting number of conntections for rach plasmid
     df = df.drop('count', axis = 1)
     df['count'] = df.groupby('qseqid')['Family'].transform('count')
     df.sort_values('count', ascending = False, inplace = True)
     df['edge'] = df['count'].apply(lambda x: x*2)
     df = df.reset_index(drop = True)
-    mob = read_mobility()
-    df = df.merge(mob, how = 'left', on = 'qseqid')
-    df['MOB'] = df['MOB'].fillna('MOB-')
     print(df)
-    network_csv = f'{tables}/plasmid_host_network_top30_2.csv'
+    ### adding mobility info for plasmids
+    df_withMOB = df.merge(mob_grades()[0], how = 'left', left_on = 'qseqid', right_on = 'Plasmid')
+    df_withMOB.drop(['Plasmid'], axis=1, inplace = True)
+    df_withMOB['MOB'] = df_withMOB['MOB'].fillna('MOB-')
+
+    ### adding host-range grade info for plasmids
+    grades_df = mob_grades()[1]
+    grades_df = grades_df[['qseqid', 'level of difference']]
+    df_withMOB = df_withMOB.merge(grades_df, how = 'left', on = 'qseqid')
+    print(df_withMOB)
+
+    network_csv = f'{tables}/plasmid_host_network_top30_3.csv'
     if not os.path.isfile(network_csv) or os.stat(network_csv).st_size == 0:
-        df.to_csv(network_csv, index = False)
+        df_withMOB.to_csv(network_csv, index = False)
     pl = pd.DataFrame(df['qseqid'].dropna().unique(), columns=['id'])
     pl['type'] = 'plasmid'
     pl['colors'] = '0,152,152'
-    pl['size'] = 30.0
+    pl['size'] = 40.0
     fam = pd.DataFrame(df['Family'].dropna().unique(), columns=['id'])
     fam['type'] = fam['id']
     fam['colors'] = colors_gen(len(fam))
     fam['size'] = 180.0
     df_type = pd.concat([pl,fam])
     print(df_type)
-    nodes_csv = f'{tables}/nodes_top30_2.csv'
+    nodes_csv = f'{tables}/nodes_top30_3.csv'
     if not os.path.isfile(nodes_csv) or os.stat(nodes_csv).st_size == 0:
         df_type.to_csv(nodes_csv, index = False)
     return df
 
-#df_family_top30()
-#df_phylum()
+def df_phylum2():
+    df = pd.read_csv(blast_results)
+    df = df[['qseqid', 'sseqid', 'ratio',  'plasmid phylum','spacer host taxonomy']]
+    df = df.loc[df['qseqid'] != df['sseqid']]
+    df['spacer host taxonomy'] = df['spacer host taxonomy'].apply(lambda x: ast.literal_eval(x))
+    df[['Kingdom','Phylum','Class','Order','Family', 'Genus','else1', 'else2']] = pd.DataFrame(df['spacer host taxonomy'].tolist())
+    df.Phylum.fillna(df['plasmid phylum'], inplace = True)
+    df = df[['qseqid', 'Phylum']]
+    df = df.drop_duplicates()
+    df['count'] = df.groupby('qseqid')['Phylum'].transform('count')
+    df.sort_values('count', ascending = False, inplace = True)
+    df['edge'] = df['count'].apply(lambda x: 10 if x > 2 else 3)
+    df['edge_col'] = df['edge'].apply(lambda x: '255,87,51' if x>3 else '235,235,235')
+    df.loc[df['edge'] > 3, 'edge_col'] = '255,87,51'
+    df.loc[df['edge'] == 3, 'edge_col'] = '235,235,235'
+    print(df)
+    ### adding mobility info for plasmids
+    df_withMOB = df.merge(mob_grades()[0], how = 'left', left_on = 'qseqid', right_on = 'Plasmid')
+    df_withMOB.drop(['Plasmid'], axis = 1, inplace = True)
+    df_withMOB['MOB'] = df_withMOB['MOB'].fillna('MOB-')
+
+    ### adding host-range grade info for plasmids
+    grades_df = mob_grades()[1]
+    grades_df = grades_df.rename(columns={'MOB':'Mobility'})
+    df_withMOB = df_withMOB.merge(grades_df, how = 'left', on = 'qseqid')
+    print(df_withMOB)
+    network_csv = f'{tables}/plasmid_hostPhylum_network3.csv'
+    if not os.path.isfile(network_csv) or os.stat(network_csv).st_size == 0:
+        df_withMOB.to_csv(network_csv, index = False)
+    pl = pd.DataFrame(df['qseqid'].dropna().unique(), columns=['id'])
+    pl['type'] = 'plasmid'
+    pl['colors'] = '0,152,152'
+    pl['size'] = 40.0
+    fam = pd.DataFrame(df['Phylum'].dropna().unique(), columns=['id'])
+    fam['type'] = fam['id']
+    fam['colors'] = colors_gen(len(fam))
+    fam['size'] = 200.0
+    df_type = pd.concat([pl,fam])
+    print(df_type)
+    nodes_csv = f'{tables}/nodes_phylum3.csv'
+    if not os.path.isfile(nodes_csv) or os.stat(nodes_csv).st_size == 0:
+        df_type.to_csv(nodes_csv, index = False)
+    return df
+
+df_family_top30()
+df_phylum2()

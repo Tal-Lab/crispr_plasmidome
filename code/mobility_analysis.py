@@ -12,9 +12,9 @@ from pathlib import Path
 
 # uncomment relevant path to OS
 # Windows
-#path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
+path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
 # macOS
-path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
+#path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
 
 # working directories
 visuals = f"{path}/visualisations"
@@ -33,14 +33,18 @@ def extract_name(x):
     except:
         return x
 
-def mobile_copla():
+def read_copla():
     df = pd.read_csv(copla_res, delimiter = '\t', header = None)
-    df=df[[0,1]]
+    df = df[[0, 1]]
     colnames = ['query', 'MOB']
     df.columns = colnames
     df['Plasmid'] = df['query'].apply(extract_name)
     df = df[['Plasmid', 'MOB']]
     df = df.drop_duplicates()
+    return df
+
+def mobile_copla():
+    df = read_copla()
     df = df.drop_duplicates('Plasmid')
     plasmids = df['Plasmid'].tolist()
     return plasmids
@@ -50,7 +54,7 @@ def mob_grades():
     mob_plasmids = mobile_copla()
     df['MOB'] = df['qseqid'].apply(lambda x: 'MOB+' if x in mob_plasmids else 'MOB-')
     df['level of difference'] = df['level of difference'].fillna(1)
-    print(df)
+    #print(df)
     mobile = df.loc[df['MOB'] == 'MOB+']
     nonmobile = df.loc[df['MOB'] == 'MOB-']
     mob_csv = f'{tables}/mobile_grades.csv'
@@ -97,4 +101,4 @@ def table_all_info():
     if not os.path.isfile(all_info) or os.stat(all_info).st_size == 0:
         table.to_csv(all_info, index = True)
 
-table_all_info()
+#table_all_info()
