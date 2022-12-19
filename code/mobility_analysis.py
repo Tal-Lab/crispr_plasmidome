@@ -12,9 +12,9 @@ from pathlib import Path
 
 # uncomment relevant path to OS
 # Windows
-path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
+#path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
 # macOS
-#path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
+path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
 
 # working directories
 visuals = f"{path}/visualisations"
@@ -25,6 +25,8 @@ Path(visuals).mkdir(parents=True, exist_ok=True)
 # working files
 copla_res = f"{tables}/results_tab.tsv"
 host_grades = f"{path}/plasmids_grades_rsults_update2/plasmids_grades_rsults_update2.csv"
+blank = f"{path}/plasmids_grades_rsults_update2/blank_results_update2.csv"
+match_update = f"{path}/match_update.csv"
 
 def extract_name(x):
     try:
@@ -49,21 +51,38 @@ def mobile_copla():
     plasmids = df['Plasmid'].tolist()
     return plasmids
 
+def blank_grades(df):
+    df_blank = pd.read_csv(blank, header = 0, index_col = 0)
+    df_blank.drop(['index'], axis = 1, inplace = True)
+    df_1 = df_blank.loc[df_blank['level of difference'] != 'equal']
+    plasmids_to_remove = df_1['qseqid'].unique().tolist()
+    #print(plasmids_to_remove)
+    df['qseqid'] = df['qseqid'].apply(lambda x: x if x not in plasmids_to_remove else 'remove')
+    df = df.loc[df['qseqid'] != 'remove']
+    df['level of difference'].fillna(1, inplace = True)
+    #df.Family.fillna(df['plasmid family'], inplace = True)
+    return df
+
+
 def mob_grades():
     df = pd.read_csv(host_grades, index_col = 0)
+    no_blank = blank_grades(df)
+    print(no_blank)
     mob_plasmids = mobile_copla()
-    df['MOB'] = df['qseqid'].apply(lambda x: 'MOB+' if x in mob_plasmids else 'MOB-')
-    df['level of difference'] = df['level of difference'].fillna(1)
+    #no_blank['MOB'] = no_blank['qseqid'].apply(lambda x: 'MOB+' if x in mob_plasmids else 'MOB-')
+    no_blank.loc[no_blank['qseqid'].isin(mob_plasmids), 'MOB'] = 'MOB+'
+    no_blank.loc[~no_blank['qseqid'].isin(mob_plasmids), 'MOB'] = 'MOB-'
+    #no_blank['level of difference'] = no_blank['level of difference'].fillna(1)
     #print(df)
-    mobile = df.loc[df['MOB'] == 'MOB+']
-    nonmobile = df.loc[df['MOB'] == 'MOB-']
-    mob_csv = f'{tables}/mobile_grades.csv'
+    mobile =  no_blank.loc[no_blank['MOB'] == 'MOB+']
+    nonmobile = no_blank.loc[no_blank['MOB'] == 'MOB-']
+    mob_csv = f'{tables}/mobile_grades2.csv'
     if not os.path.isfile(mob_csv) or os.stat(mob_csv).st_size == 0:
         mobile.to_csv(mob_csv, index = True)
-    nonmob_csv = f'{tables}/non_mobile_grades.csv'
+    nonmob_csv = f'{tables}/non_mobile_grades2.csv'
     if not os.path.isfile(nonmob_csv) or os.stat(nonmob_csv).st_size == 0:
         nonmobile.to_csv(nonmob_csv, index = True)
-    return df
+    return no_blank
 
 def selectFromTable(df, criterias):
     for index, criteria in enumerate(criterias):
@@ -76,7 +95,7 @@ def table_all_info():
     ''' This function generates general table containing all information about
         Plasmid, plsdb host lineage, host grade, mobility'''
     ### reading table with matches
-    df = pd.read_csv(r'/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project/match_update.csv',header=0, index_col = [0,1])
+    df = pd.read_csv(match_update,header=0, index_col = [0,1])
     df = df[['qseqid', 'plasmid species', 'plasmid genus', 'plasmid family', 'plasmid order', 'plasmid class','plasmid phylum', 'match']]
     df.drop_duplicates(inplace = True)
 
@@ -93,11 +112,12 @@ def table_all_info():
 
     ### obtaining mob+ and mob- dataframes from mob_grades(), filling NAs with 1, and concatenating
     mob = mob_grades()
-
+    plasmids = mob['qseqid'].unique().tolist() # obtaining plasmids
     ### merging plasmid matches df with mobility df
+    best_match = best_match.loc[best_match['qseqid'].isin(plasmids)]
     table = best_match.merge(mob, how='left', on = 'qseqid')
     ### writing resulting dataframe into csv
-    all_info = f'{tables}/all_info.csv'
+    all_info = f'{tables}/all_info2.csv'
     if not os.path.isfile(all_info) or os.stat(all_info).st_size == 0:
         table.to_csv(all_info, index = True)
 
