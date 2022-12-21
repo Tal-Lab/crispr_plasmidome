@@ -68,7 +68,7 @@ def df_family():
     df['count'] = df.groupby('Family')['Family'].transform('count')
     df.sort_values('count', ascending = False, inplace = True)
     ### setting cutoff for families with low abundance
-    df = df.loc[df['count'] >= 20]
+    #df = df.loc[df['count'] >= 20]
     df = df.drop('count', axis = 1)
     df = df.reset_index(drop = True)
     print(df)
@@ -181,6 +181,23 @@ def pivot():
     df_pivot = pd.pivot_table(df_all, values='Percent', index='FamilyX', columns='FamilyY', fill_value = 1)
     #print(df_pivot)
     return df_pivot
+
+def pivot_PlF():
+    df = df_family()
+    ### counting family abundance
+    df['count'] = df.groupby('Family')['Family'].transform('count')
+    df['count'] = 1
+    df = df.rename(columns = {'qseqid': 'Plasmid'})
+    plasmids = grades()['qseqid'].unique().tolist()  # obtaining plasmids
+    all_plasmdis = df['Plasmid'].unique().tolist()
+    non_reliable = [plasmid for plasmid in all_plasmdis if plasmid not in plasmids]
+    print(non_reliable[0])
+    plasmids.extend(non_reliable)
+    df_pivot = pd.pivot_table(df, values = 'count', index = 'Plasmid', columns = 'Family', fill_value = 0)
+    df_pivot = df_pivot.reindex(plasmids)
+    plasmids_families = f'{tables}/plasmids_families.xlsx'
+    if not os.path.isfile(plasmids_families) or os.stat(plasmids_families).st_size == 0:
+        df_pivot.to_excel(plasmids_families, index = True)
 
 def visual():
     df = pivot()
@@ -325,5 +342,6 @@ def df_phylum2():
         df_type.to_csv(nodes_csv, index = False)
     return df
 
-df_family_top30()
-df_phylum2()
+#df_family_top30()
+#df_phylum2()
+#pivot_PlF()

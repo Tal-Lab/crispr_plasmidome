@@ -12,9 +12,9 @@ from pathlib import Path
 
 # uncomment relevant path to OS
 # Windows
-#path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
+path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
 # macOS
-path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
+#path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
 
 # working directories
 visuals = f"{path}/visualisations"
@@ -62,7 +62,6 @@ def blank_grades(df):
     df['level of difference'].fillna(1, inplace = True)
     #df.Family.fillna(df['plasmid family'], inplace = True)
     return df
-
 
 def mob_grades():
     df = pd.read_csv(host_grades, index_col = 0)
