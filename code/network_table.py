@@ -41,6 +41,7 @@ Path(visuals).mkdir(parents=True, exist_ok=True)
 # working files
 blast_results = f"{resource}/BLASTp_Database.zip"
 mobility = f"{tables}/mobile_grades.csv"
+all_ptus = f"{path}/PTUs-Mapi.xlsx"
 
 def colors_gen(x):
     print('Generating %d colors' % x)
@@ -58,13 +59,34 @@ def colors_gen(x):
 
 def df_family():
     df = pd.read_csv(blast_results)
-    df = df[['qseqid', 'sseqid', 'ratio',  'plasmid family','spacer host taxonomy']]
+    df = df[['qseqid', 'sseqid', 'ratio', 'plasmid family', 'spacer host taxonomy']]
     df = df.loc[df['qseqid'] != df['sseqid']]
     df['spacer host taxonomy'] = df['spacer host taxonomy'].apply(lambda x: ast.literal_eval(x))
-    df[['Kingdom','Phylum','Class','Order','Family', 'Genus','else1', 'else2']] = pd.DataFrame(df['spacer host taxonomy'].tolist())
+    df[['Kingdom', 'Phylum', 'Class', 'Order', 'Family', 'Genus', 'else1', 'else2']] = pd.DataFrame(
+        df['spacer host taxonomy'].tolist())
     df.Family.fillna(df['plasmid family'], inplace = True)
     df = df[['qseqid', 'Family']]
     df = df.drop_duplicates()
+    return df
+
+def color_nodes(query, level, file_name):
+    pl = pd.DataFrame(query.dropna().unique(), columns=['id'])
+    pl['type'] = 'plasmid'
+    pl['colors'] = '0,152,152'
+    pl['size'] = 40.0
+    fam = pd.DataFrame(level.dropna().unique(), columns=['id'])
+    fam['type'] = fam['id']
+    fam['colors'] = colors_gen(len(fam))
+    fam['size'] = 180.0
+    df_type = pd.concat([pl,fam])
+    print(df_type)
+    file_name = file_name+'.csv'
+    nodes_csv = f'{tables}/{file_name}'
+    if not os.path.isfile(nodes_csv) or os.stat(nodes_csv).st_size == 0:
+        df_type.to_csv(nodes_csv, index = False)
+
+def network_table_family():
+    df = df_family()
     df['count'] = df.groupby('Family')['Family'].transform('count')
     df.sort_values('count', ascending = False, inplace = True)
     ### setting cutoff for families with low abundance
@@ -89,7 +111,7 @@ def df_family():
     if not os.path.isfile(nodes_csv) or os.stat(nodes_csv).st_size == 0:
         df_type.to_csv(nodes_csv, index = False)
     return df
-#df_family()
+
 def df_phylum():
     df = pd.read_csv(blast_results)
     df = df[['qseqid', 'sseqid', 'ratio',  'plasmid phylum','spacer host taxonomy']]
@@ -241,7 +263,6 @@ def visual():
         plt.savefig(png_file, format = 'png', dpi = gcf().dpi, bbox_inches = 'tight')
     plt.show()
 
-#visual()
 def mob_grades():
     mob_df = mob()
     mob_df = mob_df.groupby('Plasmid').agg(MOB = ('MOB', ','.join)).reset_index()
@@ -262,7 +283,7 @@ def df_family_top30():
     df.sort_values('count', ascending = False, inplace = True)
     top30_fams = df['Family'].unique().tolist()[:30]
     df['Family'] = df['Family'].apply(lambda x: x if x in top30_fams else 'Other')
-    ### counting number of conntections for rach plasmid
+    ### counting number of conntections for each plasmid
     df = df.drop('count', axis = 1)
     df['count'] = df.groupby('qseqid')['Family'].transform('count')
     df.sort_values('count', ascending = False, inplace = True)
@@ -278,8 +299,7 @@ def df_family_top30():
     grades_df = mob_grades()[1]
     grades_df = grades_df[['qseqid', 'level of difference']]
     df_withMOB = df_withMOB.merge(grades_df, how = 'left', on = 'qseqid')
-    print(df_withMOB)
-
+    #print(df_withMOB)
     network_csv = f'{tables}/plasmid_host_network_top30_3.csv'
     if not os.path.isfile(network_csv) or os.stat(network_csv).st_size == 0:
         df_withMOB.to_csv(network_csv, index = False)
@@ -342,6 +362,47 @@ def df_phylum2():
         df_type.to_csv(nodes_csv, index = False)
     return df
 
+def ptus ():
+    df = pd.read_excel(all_ptus, header = 1)
+    df = df[["AccessionVersion", "PTU", "Hrange (1)"]]
+    df = df.rename(columns = {'AccessionVersion': 'qseqid',"Hrange (1)":"Hrange" })
+    #plasmids_ptu = df['AccessionVersion'].unique().tolist()
+    df_fam = df_family()
+    df_fam = df_fam.merge(df, how = 'left', on = 'qseqid')
+    df_no_nan = df_fam.loc[~df_fam['PTU'].isnull()]
+    df_no_nan = df_no_nan.loc[df_fam['PTU'] != '-']
+    df_fam.PTU.fillna('missing', inplace = True)
+    #print(df_no_nan)
+    #print(df_fam['PTU'].unique())
+    return df_fam, df_no_nan
+
+def ptu_network(dataset):
+    if dataset == 'no-nan':
+        df = ptus()[1]
+    elif dataset == 'miss':
+        df = ptus()[0]
+    else:
+        print("specified dataset is not valid")
+
+    ### counting number of conntections for each PTU
+    df = df[['Family','PTU']].drop_duplicates()
+    df['count'] = df.groupby('PTU')['Family'].transform('count')
+    df.sort_values('count', ascending = False, inplace = True)
+    df['edge'] = 10
+    df = df.reset_index(drop = True)
+    print(df)
+
+    network_csv = f'{tables}/PTU_host_network.csv'
+    if not os.path.isfile(network_csv) or os.stat(network_csv).st_size == 0:
+        df.to_csv(network_csv, index = False)
+    color_nodes(df['PTU'], df['Family'], 'nodes_PTU_Fam2')
+
+
+#ptu_network('no-nan')
+
+
 #df_family_top30()
 #df_phylum2()
 #pivot_PlF()
+#visual()
+
