@@ -26,9 +26,9 @@ pd.set_option('display.max_columns', None)
 ### paths
 # uncomment relevant path to OS
 # Windows
-path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
+#path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
 # macOS
-#path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
+path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
 # Cluster
 # path = r"/gpfs0/tals/projects/Analysis/Lucy_plasmidome/Plasmidome/CRISPR"
 
@@ -397,9 +397,136 @@ def ptu_network(dataset):
         df.to_csv(network_csv, index = False)
     color_nodes(df['PTU'], df['Family'], 'nodes_PTU_Fam2')
 
+def remove_groups (taxonomy):
+    try:
+        if 'group' in taxonomy[5]:
+            taxonomy.pop(5)
+    except IndexError:
+        print(taxonomy)
+    return taxonomy
 
+def Convert (string):
+    string_clean = string[1:-1].replace("'", "")
+    li = list(string_clean.split(","))
+    return li
+
+def ptu_grades():
+    df = ptus()[0]
+    df_blast = pd.read_csv(blast_results)
+    print(df_blast.columns)
+    #df_blast['spacer host taxonomy'] = df_blast['spacer host taxonomy'].apply(lambda x: ast.literal_eval(x))
+    #df_blast[['Kingdom', 'Phylum', 'Class', 'Order', 'Family', 'Genus', 'else1', 'else2']] = pd.DataFrame(df_blast['spacer host taxonomy'].tolist())
+    #df_blast.Family.fillna(df_blast['plasmid family'], inplace = True)
+    #print(df_blast)
+    df_blast['spacer host taxonomy'] = df_blast['spacer host taxonomy'].apply(Convert)
+    # remove groups that are not relevent to the taxonomy hierarchy 
+    df_blast['spacer host taxonomy'] = df_blast['spacer host taxonomy'].apply(remove_groups)
+    # making a list of qseqid
+    df_ptus = df.merge(df_blast, how = 'left', on = 'qseqid')
+    print(df_ptus)
+    list_of_ptus = df_ptus['PTU'].unique()
+
+    # creating new dataframe
+    df_of_ptu = pd.DataFrame(df_ptus['PTU'].unique())
+    df_of_ptu['level of difference'] = ""
+    df_of_ptu.rename(columns = {0: 'PTU'}, inplace = True)
+
+    # go over qseqid list and create a dataframe from all result of the specific id in blast
+    for i in list_of_ptus:
+        rslt_df = df_ptus.loc[df_ptus['PTU'] == i]
+        rslt_df = rslt_df.reset_index()
+        rslt_df['level of difference'] = ""
+        # go over rows of the temporary datafrme of the specific id and check if there are results for different hosts(taxonomy), if so check the level of difference
+        for e in rslt_df.index:
+            try:
+                if len(rslt_df['spacer host taxonomy'][0]) != len(rslt_df['spacer host taxonomy'][e]):
+                    if rslt_df['spacer host taxonomy'][0][1] != rslt_df['spacer host taxonomy'][e][1]:
+                        rslt_df.loc[e, 'level of difference'] = "Phylum"
+                    elif rslt_df['spacer host taxonomy'][0][2] != rslt_df['spacer host taxonomy'][e][2]:
+                        rslt_df.loc[e, 'level of difference'] = "Class"
+                    elif rslt_df['spacer host taxonomy'][0][3] != rslt_df['spacer host taxonomy'][e][3]:
+                        rslt_df.loc[e, 'level of difference'] = 'Order'
+                    elif rslt_df['spacer host taxonomy'][0][4] != rslt_df['spacer host taxonomy'][e][4]:
+                        rslt_df.loc[e, 'level of difference'] = 'Family'
+                    elif rslt_df['spacer host taxonomy'][0][5] != rslt_df['spacer host taxonomy'][e][5]:
+                        rslt_df.loc[e, 'level of difference'] = 'Genus'
+                    elif rslt_df['spacer host species'][0] != rslt_df['spacer host species'][e]:
+                        rslt_df.loc[e, 'level of difference'] = 'Species'
+                else:
+                    if rslt_df['spacer host taxonomy'][0] != rslt_df['spacer host taxonomy'][e]:
+                        if rslt_df['spacer host taxonomy'][0][1] != rslt_df['spacer host taxonomy'][e][1]:
+                            rslt_df.loc[e, 'level of difference'] = "Phylum"
+                        elif rslt_df['spacer host taxonomy'][0][2] != rslt_df['spacer host taxonomy'][e][2]:
+                            rslt_df.loc[e, 'level of difference'] = "Class"
+                        elif rslt_df['spacer host taxonomy'][0][3] != rslt_df['spacer host taxonomy'][e][3]:
+                            rslt_df.loc[e, 'level of difference'] = 'Order'
+                        elif rslt_df['spacer host taxonomy'][0][4] != rslt_df['spacer host taxonomy'][e][4]:
+                            rslt_df.loc[e, 'level of difference'] = 'Family'
+                        elif rslt_df['spacer host taxonomy'][0][5] != rslt_df['spacer host taxonomy'][e][5]:
+                            rslt_df.loc[e, 'level of difference'] = 'Genus'
+                        elif rslt_df['spacer host species'][0] != rslt_df['spacer host species'][e]:
+                            rslt_df.loc[e, 'level of difference'] = 'Species'
+                    else:
+                        if rslt_df['spacer host species'][0] != rslt_df['spacer host species'][e]:
+                            rslt_df.loc[e, 'level of difference'] = 'Species'
+            except IndexError:
+                if rslt_df['spacer host species'][0] != rslt_df['spacer host species'][e]:
+                    rslt_df.loc[e, 'level of difference'] = 'Species'
+                    # check the most far taxonomy difference            
+        if 'Phylum' in rslt_df['level of difference'].unique():
+            df_of_ptu['level of difference'][df_of_ptu['qseqid'] == i] = "6"
+        elif 'Class' in rslt_df['level of difference'].unique():
+            df_of_ptu['level of difference'][df_of_ptu['qseqid'] == i] = "5"
+        elif "Order" in rslt_df['level of difference'].unique():
+            df_of_ptu['level of difference'][df_of_ptu['qseqid'] == i] = "4"
+        elif "Family" in rslt_df['level of difference'].unique():
+            df_of_ptu['level of difference'][df_of_ptu['qseqid'] == i] = "3"
+        elif "Genus" in rslt_df['level of difference'].unique():
+            df_of_ptu['level of difference'][df_of_ptu['qseqid'] == i] = "2"
+        elif "Species" in rslt_df['level of difference'].unique():
+            df_of_ptu['level of difference'][df_of_ptu['qseqid'] == i] = "1"
+    print(df_of_ptu)
+
+
+ptu_grades()
+def pivot_PTUs():
+    #df = df_family()
+    df = ptus()[0]
+    df = df[['qseqid', 'Family','PTU']]
+    df.loc[df['PTU']=='missing', 'PTU'] = '-'
+    print(df)
+    ### counting family abundance
+    dict1 = df.groupby('Family')['PTU'].apply(list).to_dict()
+    # print(dict1)
+    families = list(dict1.keys())
+    # print(families)
+    df_all = pd.DataFrame(columns = ['FamilyX', 'FamilyY', 'Percent'])
+    for index, family in enumerate(families):
+        incremetor = 1
+
+        while index + incremetor < len(families):
+            # print("\n", families[index], families[index+incremetor])
+
+            df_index = compareFamilies(
+                {families[index]: dict1[families[index]]},
+                {families[index + incremetor]: dict1[families[index + incremetor]]}
+            )
+            df_all = df_all.append(df_index)
+            incremetor += 1
+    #df['count'] = 1
+    df_all = df_all.rename(columns = {'FamilyX': 'Family'})
+    df_merged = df_all.merge(df[['Family', 'PTU']],how = 'left', on = 'Family')
+    print(df_merged)
+    df_pivot = pd.pivot_table(df_merged, values='Percent', index=['PTU','Family'], columns='FamilyY', fill_value = 1)
+    print(df_pivot)
+    PTU_pivot_families = f'{tables}/PTU_families.xlsx'
+    if not os.path.isfile(PTU_pivot_families) or os.stat(PTU_pivot_families).st_size == 0:
+        df_pivot.to_excel(PTU_pivot_families, index = True)
+    PTU_families = f'{tables}/PTU_families_notpivot.csv'
+    if not os.path.isfile(PTU_families) or os.stat(PTU_families).st_size == 0:
+        df_merged.to_csv(PTU_families, index = True)
 #ptu_network('no-nan')
-
+#pivot_PTUs()
 
 #df_family_top30()
 #df_phylum2()
