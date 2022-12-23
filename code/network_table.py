@@ -40,7 +40,6 @@ Path(visuals).mkdir(parents=True, exist_ok=True)
 
 # working files
 blast_results = f"{resource}/BLASTp_DataBase3.zip"
-#blast_results = f"{resource}/BLASTp_Database.zip"
 mobility = f"{tables}/mobile_grades.csv"
 all_ptus = f"{path}/PTUs-Mapi.xlsx"
 
