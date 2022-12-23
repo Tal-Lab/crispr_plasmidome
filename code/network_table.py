@@ -39,7 +39,7 @@ resource = r"../res"
 Path(visuals).mkdir(parents=True, exist_ok=True)
 
 # working files
-blast_results = f"{resource}/BLASTp_Database.zip"
+blast_results = f"{resource}/BLASTp_DataBase3.zip"
 mobility = f"{tables}/mobile_grades.csv"
 all_ptus = f"{path}/PTUs-Mapi.xlsx"
 
@@ -57,15 +57,47 @@ def colors_gen(x):
             i += 1
     return all_colors
 
-def df_family():
+def remove_groups (taxonomy):
+    try:
+        if 'group' in taxonomy[5]:
+            taxonomy.pop(5)
+    except IndexError:
+        pass
+        #print(taxonomy)
+    return taxonomy
+
+def Convert (string):
+    string_clean = string[1:-1].replace("'", "")
+    li = list(string_clean.split(","))
+    return li
+
+def df_read():
     df = pd.read_csv(blast_results)
-    df = df[['qseqid', 'sseqid', 'ratio', 'plasmid family', 'spacer host taxonomy']]
     df = df.loc[df['qseqid'] != df['sseqid']]
-    df['spacer host taxonomy'] = df['spacer host taxonomy'].apply(lambda x: ast.literal_eval(x))
-    df[['Kingdom', 'Phylum', 'Class', 'Order', 'Family', 'Genus', 'else1', 'else2']] = pd.DataFrame(
-        df['spacer host taxonomy'].tolist())
+    df['spacer host taxonomy'] = df['spacer host taxonomy'].apply(Convert)
+    # remove groups that are not relevent to the taxonomy hierarchy
+    df['spacer host taxonomy'] = df['spacer host taxonomy'].apply(remove_groups)
+    df['Superkingdom'] = df['spacer host taxonomy'].apply(lambda x: x[0] if len(x) > 0 else None)
+    df['Phylum'] = df['spacer host taxonomy'].apply(lambda x: x[1] if len(x) > 1 else None)
+    df['Class'] = df['spacer host taxonomy'].apply(lambda x: x[2] if len(x) > 2 else None)
+    df['Order'] = df['spacer host taxonomy'].apply(lambda x: x[3] if len(x) > 3 else None)
+    df['Family'] = df['spacer host taxonomy'].apply(lambda x: x[4] if len(x) > 4 else None)
+    df['Genus'] = df['spacer host taxonomy'].apply(lambda x: x[5] if len(x) > 5 else None)
+    df = df.rename(columns = {'spacer host species': 'Species'})
+    #df = df.drop('spacer host taxonomy', axis = 1)
+    return df
+
+def df_family():
+    df = df_read()
     df.Family.fillna(df['plasmid family'], inplace = True)
     df = df[['qseqid', 'Family']]
+    df = df.drop_duplicates()
+    return df
+
+def df_phylum():
+    df = df_read()
+    df.Phylum.fillna(df['plasmid phylum'], inplace = True)
+    df = df[['qseqid', 'Phylum']]
     df = df.drop_duplicates()
     return df
 
@@ -112,15 +144,8 @@ def network_table_family():
         df_type.to_csv(nodes_csv, index = False)
     return df
 
-def df_phylum():
-    df = pd.read_csv(blast_results)
-    df = df[['qseqid', 'sseqid', 'ratio',  'plasmid phylum','spacer host taxonomy']]
-    df = df.loc[df['qseqid'] != df['sseqid']]
-    df['spacer host taxonomy'] = df['spacer host taxonomy'].apply(lambda x: ast.literal_eval(x))
-    df[['Kingdom','Phylum','Class','Order','Family', 'Genus','else1', 'else2']] = pd.DataFrame(df['spacer host taxonomy'].tolist())
-    df.Phylum.fillna(df['plasmid phylum'], inplace = True)
-    df = df[['qseqid', 'Phylum']]
-    df = df.drop_duplicates()
+def network_table_phylum():
+    df = df_phylum()
     df['count'] = df.groupby('qseqid')['Phylum'].transform('count')
     df.sort_values('count', ascending = False, inplace = True)
     df['edge'] = df['count'].apply(lambda x: 10 if x > 2 else 3)
@@ -270,12 +295,7 @@ def mob_grades():
     return [mob_df, grade_df]
 
 def df_family_top30():
-    df = pd.read_csv(blast_results)
-    df = df[['qseqid', 'sseqid', 'ratio',  'plasmid family','spacer host taxonomy']]
-    df = df.loc[df['qseqid'] != df['sseqid']]
-    df['spacer host taxonomy'] = df['spacer host taxonomy'].apply(lambda x: ast.literal_eval(x))
-    df[['Kingdom','Phylum','Class','Order','Family', 'Genus','else1', 'else2']] = pd.DataFrame(df['spacer host taxonomy'].tolist())
-    df.Family.fillna(df['plasmid family'], inplace = True)
+    df = df_read()
     df = df[['qseqid', 'Family', 'Phylum']]
     df = df.drop_duplicates()
     ### getting top 30 abundant families and merging others into OTHER
@@ -319,13 +339,7 @@ def df_family_top30():
     return df
 
 def df_phylum2():
-    df = pd.read_csv(blast_results)
-    df = df[['qseqid', 'sseqid', 'ratio',  'plasmid phylum','spacer host taxonomy']]
-    df = df.loc[df['qseqid'] != df['sseqid']]
-    df['spacer host taxonomy'] = df['spacer host taxonomy'].apply(lambda x: ast.literal_eval(x))
-    df[['Kingdom','Phylum','Class','Order','Family', 'Genus','else1', 'else2']] = pd.DataFrame(df['spacer host taxonomy'].tolist())
-    df.Phylum.fillna(df['plasmid phylum'], inplace = True)
-    df = df[['qseqid', 'Phylum']]
+    df = df_phylum()
     df = df.drop_duplicates()
     df['count'] = df.groupby('qseqid')['Phylum'].transform('count')
     df.sort_values('count', ascending = False, inplace = True)
@@ -396,32 +410,27 @@ def ptu_network(dataset):
     if not os.path.isfile(network_csv) or os.stat(network_csv).st_size == 0:
         df.to_csv(network_csv, index = False)
     color_nodes(df['PTU'], df['Family'], 'nodes_PTU_Fam2')
+    return df
 
-def remove_groups (taxonomy):
-    try:
-        if 'group' in taxonomy[5]:
-            taxonomy.pop(5)
-    except IndexError:
-        print(taxonomy)
-    return taxonomy
-
-def Convert (string):
-    string_clean = string[1:-1].replace("'", "")
-    li = list(string_clean.split(","))
-    return li
+def PTU_family_phylum():
+    df = df_read()
+    df.Family.fillna(df['plasmid family'], inplace = True)
+    df.Phylum.fillna(df['plasmid phylum'], inplace = True)
+    df.Class.fillna(df['plasmid class'], inplace = True)
+    df.Order.fillna(df['plasmid order'], inplace = True)
+    df = df[['Family', 'Order', 'Class', 'Phylum']]
+    df = df.drop_duplicates()
+    df_ptu= ptu_network('no-nan')
+    df_ptu_family = df_ptu.merge(df, how = 'left', on ='Family')
+    print(df_ptu_family)
+    network_csv = f'{tables}/PTU_hostLin_network.csv'
+    if not os.path.isfile(network_csv) or os.stat(network_csv).st_size == 0:
+        df_ptu_family.to_csv(network_csv, index = False)
 
 def ptu_grades():
     df = ptus()[0]
-    df_blast = pd.read_csv(blast_results)
-    print(df_blast.columns)
-    #df_blast['spacer host taxonomy'] = df_blast['spacer host taxonomy'].apply(lambda x: ast.literal_eval(x))
-    #df_blast[['Kingdom', 'Phylum', 'Class', 'Order', 'Family', 'Genus', 'else1', 'else2']] = pd.DataFrame(df_blast['spacer host taxonomy'].tolist())
-    #df_blast.Family.fillna(df_blast['plasmid family'], inplace = True)
-    #print(df_blast)
-    df_blast['spacer host taxonomy'] = df_blast['spacer host taxonomy'].apply(Convert)
-    # remove groups that are not relevent to the taxonomy hierarchy 
-    df_blast['spacer host taxonomy'] = df_blast['spacer host taxonomy'].apply(remove_groups)
-    # making a list of qseqid
+    df_blast = df_read()
+
     df_ptus = df.merge(df_blast, how = 'left', on = 'qseqid')
     print(df_ptus)
     list_of_ptus = df_ptus['PTU'].unique()
@@ -439,7 +448,7 @@ def ptu_grades():
         # go over rows of the temporary datafrme of the specific id and check if there are results for different hosts(taxonomy), if so check the level of difference
         for e in rslt_df.index:
             try:
-                if len(rslt_df['spacer host taxonomy'][0]) != len(rslt_df['spacer host taxonomy'][e]):
+                if len(rslt_df['spacer host taxonomy']) != len(rslt_df['spacer host taxonomy'][e]):
                     if rslt_df['spacer host taxonomy'][0][1] != rslt_df['spacer host taxonomy'][e][1]:
                         rslt_df.loc[e, 'level of difference'] = "Phylum"
                     elif rslt_df['spacer host taxonomy'][0][2] != rslt_df['spacer host taxonomy'][e][2]:
@@ -525,9 +534,10 @@ def pivot_PTUs():
     PTU_families = f'{tables}/PTU_families_notpivot.csv'
     if not os.path.isfile(PTU_families) or os.stat(PTU_families).st_size == 0:
         df_merged.to_csv(PTU_families, index = True)
+
 #ptu_network('no-nan')
 #pivot_PTUs()
-
+#PTU_family_phylum()
 #df_family_top30()
 #df_phylum2()
 #pivot_PlF()
