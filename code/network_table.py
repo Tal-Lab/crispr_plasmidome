@@ -26,9 +26,9 @@ pd.set_option('display.max_columns', None)
 ### paths
 # uncomment relevant path to OS
 # Windows
-path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
+#path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
 # macOS
-#path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
+path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
 # Cluster
 # path = r"/gpfs0/tals/projects/Analysis/Lucy_plasmidome/Plasmidome/CRISPR"
 
@@ -39,7 +39,7 @@ resource = r"../res"
 Path(visuals).mkdir(parents=True, exist_ok=True)
 
 # working files
-blast_results = f"{resource}/BLASTp_Database.zip"
+blast_results = f"{resource}/BLASTp_DataBase3.zip"
 mobility = f"{tables}/mobile_grades.csv"
 all_ptus = f"{path}/PTUs-Mapi.xlsx"
 
@@ -390,7 +390,6 @@ def ptu_network(dataset):
     df.sort_values('count', ascending = False, inplace = True)
     df['edge'] = 10
     df = df.reset_index(drop = True)
-    print(df)
 
     network_csv = f'{tables}/PTU_host_network.csv'
     if not os.path.isfile(network_csv) or os.stat(network_csv).st_size == 0:
