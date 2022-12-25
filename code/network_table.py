@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 from matplotlib.pyplot import *
 from mobility_analysis import read_copla as mob
 from mobility_analysis import mob_grades as grades
+from datetime import datetime
 
 pd.set_option('display.max_columns', None)
 
@@ -515,34 +516,30 @@ def ptu_grades():
     new_df2=new_df2.assign(Host2=None,Host3=None,Host4=None,Host5=None,Host6=None)
     print(new_df2.columns)
     newdf_grouped = new_df2.groupby(['PTU', 'Host Range Grade'])[host_combined,'Host2', 'Host3', 'Host4', 'Host5', 'Host6']
+
+    #one_more_df = pd.DataFrame(['PTU', 'Host Range Grade', 'Host1', 'Host2', 'Host3', 'Host4', 'Host5', 'Host6' ])
+    cols = ['PTU', 'Host Range Grade', 'Host1', 'Host2', 'Host3', 'Host4', 'Host5', 'Host6' ]
+    rows = []
     for name, group in newdf_grouped:
-        print(name)
-        print(group.index)
-        indent_index = 1
-        prev_value = ''
+        col_list = group['Host (combined)'].tolist()
+        print(col_list)
+        row = [name[0], name[1]]
+        print(row)
+        row.extend(col_list)
+        print(row)
+        while len(row) < 8:
+            row.append(None)
+        rows.append(row)
 
-        for row_index, row in group.iterrows():
-            prev_value = row
-            print(row_index)
 
-            if(True):
-                print(row)
-            else:
-                print(row)
+
                 # move this host to this_column_index+indent_index
-
-
-    """
-        1. group by ptu
-        2. apply toList func to get list of lists
-        2. get number of items in group
-        3. for loop to insert df.len empty cells before row 
-        
-    """
-    
-    PTU_hostrange = f'{tables}/PTU_HostRange199123091390130912.csv'
-    if not os.path.isfile(PTU_hostrange) or os.stat(PTU_hostrange).st_size == 0:
-        new_df.to_csv(PTU_hostrange, index = True)
+    one_more_df = pd.DataFrame(rows, columns = cols)
+    #newdf_grouped = newdf_grouped.to_frame()
+    suffix = datetime.now().strftime('%d-%m-%Y-%H-%M')
+    print(suffix)
+    PTU_hostrange = f'{tables}/PTU_HostRange-{suffix}.csv'
+    one_more_df.to_csv(PTU_hostrange, mode ='a', index = False)
 
 
 
