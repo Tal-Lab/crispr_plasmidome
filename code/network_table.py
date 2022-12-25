@@ -26,9 +26,9 @@ pd.set_option('display.max_columns', None)
 ### paths
 # uncomment relevant path to OS
 # Windows
-path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
+#path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
 # macOS
-# path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
+path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
 # Cluster
 # path = r"/gpfs0/tals/projects/Analysis/Lucy_plasmidome/Plasmidome/CRISPR"
 
@@ -494,27 +494,55 @@ def ptu_grades():
         elif "Species" in rslt_df['level of difference'].unique():
             df_no_dupl['level of difference'][df_no_dupl['PTU'] == i] = "1"
 
-    df_no_dupl.loc[df_no_dupl['level of difference'] == "", 'level of difference'] = 1
+    df_no_dupl.loc[df_no_dupl['level of difference'] == "", 'level of difference'] = '1'
     df_no_dupl = df_no_dupl.rename(columns={'level of difference':'Host Range Grade'})
     df_no_dupl = df_no_dupl.reset_index(drop=True)
     new_df = df_no_dupl.drop(['Species','Genus', 'sseqid', 'spacer host taxonomy'],axis=1)
-    print(new_df[new_df['Host Range Grade'] == 5])
     new_df = new_df.drop_duplicates()
-    print(new_df[new_df['Host Range Grade']==5])
-    new_df = new_df.set_index(['PTU','Host Range Grade']).sort_index(level=0)
-    new_df.columns = pd.MultiIndex.from_product([['Host'], new_df.columns])
+    new_df = new_df.set_index(['PTU','Host Range Grade']).sort_index()
+    #new_df.columns = pd.MultiIndex.from_product([['Host'], new_df.columns])
+    #print(new_df)
+
+    host_combined = "Host (combined)"
+    new_df[host_combined] = new_df[new_df.columns[1:]].apply(
+        lambda x: ','.join(x.dropna().astype(str)),
+        axis=1
+    )
+
+    new_df = new_df[[host_combined]]
+    #print(new_df[host_combined].count())
+    new_df2 = new_df.reset_index()
+    new_df2=new_df2.assign(Host2=None,Host3=None,Host4=None,Host5=None,Host6=None)
+    print(new_df2.columns)
+    newdf_grouped = new_df2.groupby(['PTU', 'Host Range Grade'])[host_combined,'Host2', 'Host3', 'Host4', 'Host5', 'Host6']
+    for name, group in newdf_grouped:
+        print(name)
+        print(group.index)
+        indent_index = 1
+        prev_value = ''
+
+        for row_index, row in group.iterrows():
+            prev_value = row
+            print(row_index)
+
+            if(True):
+                print(row)
+            else:
+                print(row)
+                # move this host to this_column_index+indent_index
 
 
-    #dict_test =
-    #print(df_unst)
-
-
+    """
+        1. group by ptu
+        2. apply toList func to get list of lists
+        2. get number of items in group
+        3. for loop to insert df.len empty cells before row 
+        
     """
     
-    PTU_hostrange = f'{tables}/PTU_HostRange.csv'
+    PTU_hostrange = f'{tables}/PTU_HostRange199123091390130912.csv'
     if not os.path.isfile(PTU_hostrange) or os.stat(PTU_hostrange).st_size == 0:
-        df_of_ptu.to_csv(PTU_hostrange, index = True)
-    """
+        new_df.to_csv(PTU_hostrange, index = True)
 
 
 
