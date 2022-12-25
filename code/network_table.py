@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 from matplotlib.pyplot import *
 from mobility_analysis import read_copla as mob
 from mobility_analysis import mob_grades as grades
+from datetime import datetime
 
 pd.set_option('display.max_columns', None)
 
@@ -74,6 +75,10 @@ def Convert (string):
 def df_read():
     df = pd.read_csv(blast_results)
     df = df.loc[df['qseqid'] != df['sseqid']]
+    df = df[['qseqid', 'sseqid', 'spacer host taxonomy','spacer host species', 'plasmid species',
+       'plasmid genus', 'plasmid family', 'plasmid order', 'plasmid class',
+      'plasmid phylum', 'plasmid superkingdom', 'match']]
+    df = df.drop_duplicates()
     df['spacer host taxonomy'] = df['spacer host taxonomy'].apply(Convert)
     # remove groups that are not relevent to the taxonomy hierarchy
     df['spacer host taxonomy'] = df['spacer host taxonomy'].apply(remove_groups)
@@ -381,12 +386,12 @@ def ptus ():
     df = df[["AccessionVersion", "PTU", "Hrange (1)"]]
     df = df.rename(columns = {'AccessionVersion': 'qseqid',"Hrange (1)":"Hrange" })
     #plasmids_ptu = df['AccessionVersion'].unique().tolist()
-    df_fam = df_family()
+    df_fam = df_read()
     df_fam = df_fam.merge(df, how = 'left', on = 'qseqid')
     df_no_nan = df_fam.loc[~df_fam['PTU'].isnull()]
     df_no_nan = df_no_nan.loc[df_fam['PTU'] != '-']
     df_fam.PTU.fillna('missing', inplace = True)
-    #print(df_no_nan)
+    print(df_no_nan['qseqid'].nunique())
     #print(df_fam['PTU'].unique())
     return df_fam, df_no_nan
 
@@ -425,20 +430,18 @@ def PTU_family_phylum():
         df_ptu_family.to_csv(network_csv, index = False)
 
 def ptu_grades():
-    df = ptus()[1]
-    df_blast = df_read()
-
-    df_ptus = df.merge(df_blast, how = 'left', on = 'qseqid')
-    list_of_ptus = df_ptus['PTU'].unique()
-
+    df =  ptus()[1]
+    df_for_grades = df[['PTU', 'sseqid','spacer host taxonomy', 'Species', 'Genus', 'Family', 'Order', 'Class', 'Phylum', 'Superkingdom']]
+    df_no_dupl = df_for_grades.drop_duplicates(subset = ['PTU', 'Species', 'Genus','Family', 'Order', 'Class', 'Phylum', 'Superkingdom'])
+    list_of_ptus = df_for_grades['PTU'].unique()
     # creating new dataframe
-    df_of_ptu = pd.DataFrame(df_ptus['PTU'].unique())
-    df_of_ptu['level of difference'] = ""
-    df_of_ptu.rename(columns = {0: 'PTU'}, inplace = True)
+    #df_of_ptu = pd.DataFrame(df_no_dupl['PTU'].unique())
+    df_no_dupl['level of difference'] = ""
+    #df_of_ptu.rename(columns = {0: 'PTU'}, inplace = True)
     # go over qseqid list and create a dataframe from all result of the specific id in blast
     for i in list_of_ptus:
         print(i)
-        rslt_df = df_ptus.loc[df_ptus['PTU'] == i]
+        rslt_df = df_no_dupl.loc[df_no_dupl['PTU'] == i]
         rslt_df = rslt_df.reset_index()
         rslt_df['level of difference'] = ""
         # go over rows of the temporary datafrme of the specific id and check if there are results for different hosts(taxonomy), if so check the level of difference
@@ -480,51 +483,66 @@ def ptu_grades():
                     rslt_df.loc[e, 'level of difference'] = 'Species'
                     # check the most far taxonomy difference
         if 'Phylum' in rslt_df['level of difference'].unique():
-            df_of_ptu['level of difference'][df_of_ptu['PTU'] == i] = "6"
+            df_no_dupl['level of difference'][df_no_dupl['PTU'] == i] = "6"
         elif 'Class' in rslt_df['level of difference'].unique():
-            df_of_ptu['level of difference'][df_of_ptu['PTU'] == i] = "5"
+            df_no_dupl['level of difference'][df_no_dupl['PTU'] == i] = "5"
         elif "Order" in rslt_df['level of difference'].unique():
-            df_of_ptu['level of difference'][df_of_ptu['PTU'] == i] = "4"
+            df_no_dupl['level of difference'][df_no_dupl['PTU'] == i] = "4"
         elif "Family" in rslt_df['level of difference'].unique():
-            df_of_ptu['level of difference'][df_of_ptu['PTU'] == i] = "3"
+            df_no_dupl['level of difference'][df_no_dupl['PTU'] == i] = "3"
         elif "Genus" in rslt_df['level of difference'].unique():
-            df_of_ptu['level of difference'][df_of_ptu['PTU'] == i] = "2"
+            df_no_dupl['level of difference'][df_no_dupl['PTU'] == i] = "2"
         elif "Species" in rslt_df['level of difference'].unique():
-            df_of_ptu['level of difference'][df_of_ptu['PTU'] == i] = "1"
-    tut = df_of_ptu[df_of_ptu['level of difference'] == ""]
-    tut = tut.reset_index()
-    for d in tut['PTU']:
-        count_rows = df_of_ptu.loc[df_of_ptu['PTU'] == d]
-        count_rows = count_rows.reset_index()
-        count_rows['equal'] = ""
-        if len(count_rows.index) == 1:
-            tut['level of difference'][tut['PTU'] == d] = 1
-        else:
-            for s in count_rows.index:
-                if len(count_rows['spacer host taxonomy'][0]) == len(count_rows['spacer host taxonomy'][s]):
-                    if count_rows['spacer host taxonomy'][s] == count_rows['spacer host taxonomy'][0]:
-                        count_rows['equal'][s] = 'yes'
-                    else:
-                        count_rows['equal'][s] = 'no'
-                else:
-                    count_rows['equal'][s] = 'no'
-        if 'no' in count_rows['equal'].unique():
-            tut['level of difference'][tut['PTU'] == d] = 'check'
-        elif 'yes' in count_rows['equal'].unique():
-            tut['level of difference'][tut['PTU'] == d] = 'equal'
-        df_1 = tut.loc[tut['level of difference'] != 'equal']
-        plasmids_to_remove = df_1['PTU'].unique().tolist()
-        # print(plasmids_to_remove)
-        df_of_ptu['PTU'] = df_of_ptu['PTU'].apply(lambda x: x if x not in plasmids_to_remove else 'remove')
-        df_of_ptu = df_of_ptu.loc[df_of_ptu['PTU'] != 'remove']
-        df_of_ptu['level of difference'].fillna(1, inplace = True)
+            df_no_dupl['level of difference'][df_no_dupl['PTU'] == i] = "1"
 
-    PTU_hostrange = f'{tables}/PTU_HostRange.csv'
-    if not os.path.isfile(PTU_hostrange) or os.stat(PTU_hostrange).st_size == 0:
-        df_of_ptu.to_csv(PTU_hostrange, index = True)
+    df_no_dupl.loc[df_no_dupl['level of difference'] == "", 'level of difference'] = '1'
+    df_no_dupl = df_no_dupl.rename(columns={'level of difference':'Host Range Grade'})
+    df_no_dupl = df_no_dupl.reset_index(drop=True)
+    new_df = df_no_dupl.drop(['Species','Genus', 'sseqid', 'spacer host taxonomy'],axis=1)
+    new_df = new_df.drop_duplicates()
+    new_df = new_df.set_index(['PTU','Host Range Grade']).sort_index()
+    #new_df.columns = pd.MultiIndex.from_product([['Host'], new_df.columns])
+    #print(new_df)
+
+    host_combined = "Host (combined)"
+    new_df[host_combined] = new_df[new_df.columns[1:]].apply(
+        lambda x: ','.join(x.dropna().astype(str)),
+        axis=1
+    )
+
+    new_df = new_df[[host_combined]]
+    #print(new_df[host_combined].count())
+    new_df2 = new_df.reset_index()
+    new_df2=new_df2.assign(Host2=None,Host3=None,Host4=None,Host5=None,Host6=None)
+    print(new_df2.columns)
+    newdf_grouped = new_df2.groupby(['PTU', 'Host Range Grade'])[host_combined,'Host2', 'Host3', 'Host4', 'Host5', 'Host6']
+
+    #one_more_df = pd.DataFrame(['PTU', 'Host Range Grade', 'Host1', 'Host2', 'Host3', 'Host4', 'Host5', 'Host6' ])
+    cols = ['PTU', 'Host Range Grade', 'Host1', 'Host2', 'Host3', 'Host4', 'Host5', 'Host6' ]
+    rows = []
+    for name, group in newdf_grouped:
+        col_list = group['Host (combined)'].tolist()
+        print(col_list)
+        row = [name[0], name[1]]
+        print(row)
+        row.extend(col_list)
+        print(row)
+        while len(row) < 8:
+            row.append(None)
+        rows.append(row)
 
 
-#ptu_grades()
+
+                # move this host to this_column_index+indent_index
+    one_more_df = pd.DataFrame(rows, columns = cols)
+    #newdf_grouped = newdf_grouped.to_frame()
+    suffix = datetime.now().strftime('%d-%m-%Y-%H-%M')
+    print(suffix)
+    PTU_hostrange = f'{tables}/PTU_HostRange-{suffix}.csv'
+    one_more_df.to_csv(PTU_hostrange, mode ='a', index = False)
+
+
+
 def pivot_PTUs():
     #df = df_family()
     df = ptus()[0]
@@ -569,4 +587,4 @@ def pivot_PTUs():
 #df_phylum2()
 #pivot_PlF()
 #visual()
-
+ptu_grades()
