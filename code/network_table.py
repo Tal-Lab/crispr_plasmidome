@@ -40,10 +40,10 @@ resource = r"../res"
 Path(visuals).mkdir(parents=True, exist_ok=True)
 
 # working files
-#blast_results = f"{resource}/BLASTp_DataBase3.zip"
+blast_results = f"{resource}/BLASTp_DataBase3.zip"
 mobility = f"{tables}/mobile_grades.csv"
 all_ptus = f"{path}/PTUs-Mapi.xlsx"
-blast_results = r"C:\Users\Lucy\Documents\OneDrive - Israel Oceanograpic & Limnological Research\plasmids\Project_Sivan\CRISPR\BLASTp_DataBase.csv"
+
 def colors_gen(x):
     print('Generating %d colors' % x)
     all_colors = []
