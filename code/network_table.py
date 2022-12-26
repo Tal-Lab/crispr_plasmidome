@@ -40,10 +40,10 @@ resource = r"../res"
 Path(visuals).mkdir(parents=True, exist_ok=True)
 
 # working files
-blast_results = f"{resource}/BLASTp_DataBase3.zip"
+#blast_results = f"{resource}/BLASTp_DataBase3.zip"
 mobility = f"{tables}/mobile_grades.csv"
 all_ptus = f"{path}/PTUs-Mapi.xlsx"
-
+blast_results = r"C:\Users\Lucy\Documents\OneDrive - Israel Oceanograpic & Limnological Research\plasmids\Project_Sivan\CRISPR\BLASTp_DataBase.csv"
 def colors_gen(x):
     print('Generating %d colors' % x)
     all_colors = []
@@ -432,22 +432,21 @@ def PTU_family_phylum():
 def ptu_grades():
     df =  ptus()[1]
     df_for_grades = df[['PTU', 'sseqid','spacer host taxonomy', 'Species', 'Genus', 'Family', 'Order', 'Class', 'Phylum', 'Superkingdom']]
+    #### removing duplicating hits
     df_no_dupl = df_for_grades.drop_duplicates(subset = ['PTU', 'Species', 'Genus','Family', 'Order', 'Class', 'Phylum', 'Superkingdom'])
+
     list_of_ptus = df_for_grades['PTU'].unique()
-    # creating new dataframe
-    #df_of_ptu = pd.DataFrame(df_no_dupl['PTU'].unique())
+    # creating new colomn for level of difference (host range grade
     df_no_dupl['level of difference'] = ""
-    #df_of_ptu.rename(columns = {0: 'PTU'}, inplace = True)
-    # go over qseqid list and create a dataframe from all result of the specific id in blast
+
+    # go over PTU list and create a dataframe from all result of the specific id in blast
     for i in list_of_ptus:
-        print(i)
         rslt_df = df_no_dupl.loc[df_no_dupl['PTU'] == i]
         rslt_df = rslt_df.reset_index()
         rslt_df['level of difference'] = ""
-        # go over rows of the temporary datafrme of the specific id and check if there are results for different hosts(taxonomy), if so check the level of difference
+        # go over rows of the temporary dataframe of the specific id and check if there are results for different hosts(taxonomy), if so check the level of difference
         for e in rslt_df.index:
             try:
-                print('Trying for %s in %s' % (e, i))
                 if len(rslt_df['spacer host taxonomy']) != len(rslt_df['spacer host taxonomy'][e]):
                     if rslt_df['spacer host taxonomy'][0][1] != rslt_df['spacer host taxonomy'][e][1]:
                         rslt_df.loc[e, 'level of difference'] = "Phylum"
@@ -495,14 +494,15 @@ def ptu_grades():
         elif "Species" in rslt_df['level of difference'].unique():
             df_no_dupl['level of difference'][df_no_dupl['PTU'] == i] = "1"
 
+    ### replace empty spaces with 1 - as level of difference is on Species
     df_no_dupl.loc[df_no_dupl['level of difference'] == "", 'level of difference'] = '1'
     df_no_dupl = df_no_dupl.rename(columns={'level of difference':'Host Range Grade'})
     df_no_dupl = df_no_dupl.reset_index(drop=True)
+
+    ### removing unnecessary columns and duplicating matches
     new_df = df_no_dupl.drop(['Species','Genus', 'sseqid', 'spacer host taxonomy'],axis=1)
     new_df = new_df.drop_duplicates()
     new_df = new_df.set_index(['PTU','Host Range Grade']).sort_index()
-    #new_df.columns = pd.MultiIndex.from_product([['Host'], new_df.columns])
-    #print(new_df)
 
     host_combined = "Host (combined)"
     new_df[host_combined] = new_df[new_df.columns[:]].apply(
@@ -511,31 +511,23 @@ def ptu_grades():
     )
 
     new_df = new_df[[host_combined]]
-    #print(new_df[host_combined].count())
     new_df2 = new_df.reset_index()
-    new_df2=new_df2.assign(Host2=None,Host3=None,Host4=None,Host5=None,Host6=None)
-    print(new_df2.columns)
-    newdf_grouped = new_df2.groupby(['PTU', 'Host Range Grade'])[host_combined,'Host2', 'Host3', 'Host4', 'Host5', 'Host6']
+    ### group by PTU and host range grade
+    newdf_grouped = new_df2.groupby(['PTU', 'Host Range Grade'])[host_combined]
 
-    #one_more_df = pd.DataFrame(['PTU', 'Host Range Grade', 'Host1', 'Host2', 'Host3', 'Host4', 'Host5', 'Host6' ])
+    ### setting list of columns for final df
     cols = ['PTU', 'Host Range Grade', 'Host1', 'Host2', 'Host3', 'Host4', 'Host5', 'Host6' ]
     rows = []
     for name, group in newdf_grouped:
         col_list = group['Host (combined)'].tolist()
-        print(col_list)
         row = [name[0], name[1]]
-        print(row)
         row.extend(col_list)
-        print(row)
         while len(row) < 8:
             row.append(None)
         rows.append(row)
 
-
-
-                # move this host to this_column_index+indent_index
     one_more_df = pd.DataFrame(rows, columns = cols)
-    #newdf_grouped = newdf_grouped.to_frame()
+
     suffix = datetime.now().strftime('%d-%m-%Y-%H-%M')
     print(suffix)
     PTU_hostrange = f'{tables}/PTU_HostRange-{suffix}.csv'
