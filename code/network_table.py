@@ -505,7 +505,7 @@ def ptu_grades():
     #print(new_df)
 
     host_combined = "Host (combined)"
-    new_df[host_combined] = new_df[new_df.columns[1:]].apply(
+    new_df[host_combined] = new_df[new_df.columns[:]].apply(
         lambda x: ','.join(x.dropna().astype(str)),
         axis=1
     )
