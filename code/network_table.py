@@ -25,7 +25,7 @@ pd.set_option('display.max_columns', None)
 """
 
 ### paths
-# uncomment relevant path to OS
+## uncomment relevant path to OS
 # Windows
 path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
 # macOS
@@ -40,7 +40,7 @@ resource = r"../res"
 Path(visuals).mkdir(parents=True, exist_ok=True)
 
 # working files
-blast_results = f"{resource}/BLASTp_DataBase3.zip"
+blast_results = f"{resource}/BLAST_Database.csv"
 mobility = f"{tables}/mobile_grades.csv"
 all_ptus = f"{path}/PTUs-Mapi.xlsx"
 
@@ -534,7 +534,6 @@ def ptu_grades():
     one_more_df.to_csv(PTU_hostrange, mode ='a', index = False)
 
 
-
 def pivot_PTUs():
     #df = df_family()
     df = ptus()[0]
@@ -572,11 +571,11 @@ def pivot_PTUs():
     if not os.path.isfile(PTU_families) or os.stat(PTU_families).st_size == 0:
         df_merged.to_csv(PTU_families, index = True)
 
-#ptu_network('no-nan')
-#pivot_PTUs()
-#PTU_family_phylum()
-#df_family_top30()
-#df_phylum2()
-#pivot_PlF()
-#visual()
-#ptu_grades()
+#ptu_network('no-nan') ### generating a table for network with ptus without nan
+#pivot_PTUs() ### generating pivot table with PTUs and Families in y, Families in y, and filled walues and presence percentage
+#PTU_family_phylum() ### generating table with PTU and its potential host family and phylum
+#df_family_top30() ### generating table with top 30 families and others combined into 'other'
+#df_phylum2() ### generating plasmid-phylum table
+#pivot_PlF() ### generating pivoted plasmid-family table
+#visual() ### making a heatmap of plasmid percentage in the families
+#ptu_grades() ### getting table with host range grades for PTUs
