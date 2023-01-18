@@ -130,9 +130,9 @@ for d in tut['qseqid']:
     elif 'yes' in count_rows['equal'].unique():
         tut['level of difference'][tut['qseqid']== d]=  'equal'
         
-df_of_qseqid.to_csv('plasmids_grades_rsults_update2.csv')                
+df_of_qseqid.to_csv('plasmids_grades_rsults.csv')                
                
 
-tut.to_csv('blank_results_update2.csv')
+tut.to_csv('blank_results.csv')
     
        
