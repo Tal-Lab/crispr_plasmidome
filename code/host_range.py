@@ -7,8 +7,9 @@ Created on Mon Nov 28 19:20:44 2022
  
 import pandas as pd
 import numpy as np
+import sys
 
-plasmid_blast = pd.read_csv (r"C:\sivan\לימודים\שנה ג\פרויקט מחקר בפייתון\BLASTp_DataBase3.csv", sep= ",",  header = 0)
+plasmid_blast = pd.read_csv (sys.argv[1], sep= ",",  header = 0)
 #remove all rows where qseqid == sseqid
 concat_blast = plasmid_blast[plasmid_blast.qseqid != plasmid_blast.sseqid]
 
