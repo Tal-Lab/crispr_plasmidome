@@ -6,8 +6,9 @@ Created on Sun Dec 11 19:02:23 2022
 """
 
 import pandas as pd
+import search_Entrez
 
-plasmid_blast = pd.read_csv (r"C:\sivan\לימודים\שנה ג\פרויקט מחקר בפייתון\BLASTp_DataBase3.csv", sep= ",",  header = 0)
+plasmid_blast = search_Entrez.BLASTn_with_metadata
 #remove rows where qseqid == sseqid
 plasmid_blast = plasmid_blast[plasmid_blast.qseqid != plasmid_blast.sseqid]
 
@@ -38,7 +39,7 @@ plasmid_blast['spacer host taxonomy'] = plasmid_blast['spacer host taxonomy'].ap
 
 
 plasmid_blast.to_csv("clean_up.csv")
-plasmid_blast = pd.read_csv (r"C:\sivan\לימודים\clean_up.csv", sep= ",",  header = 0)
+plasmid_blast = pd.read_csv (r"clean_up.csv", sep= ",",  header = 0)
 
 #clean up column before comparison
 def remove_unnecessary_charecters (cell):
