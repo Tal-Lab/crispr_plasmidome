@@ -11,6 +11,7 @@ from Bio import Entrez
 import pandas as pd
 import sys
 import http.client
+import metadata
 
 #Restrict request to only ask for HTTP/1.0
 http.client.HTTPConnection._http_vsn = 10
@@ -18,7 +19,7 @@ http.client.HTTPConnection._http_vsn_str = 'HTTP/1.0'
 
 #Read BLASTn with plasmids metadata taxonomy
 
-BLASTn_with_metadata = pd.read_csv ("/gpfs0/tals/projects/Analysis/sivan_project/unique_taxonomy_metadata2.csv", sep= ",",  header = 0)
+BLASTn_with_metadata = metadata.plasmid_blast_copy
 
 #Creating new data frame with unique spacer id
 
@@ -34,14 +35,14 @@ def search_Entrez (x):
         handle = Entrez.efetch(db="nucleotide", id= x, rettype="gb", retmode="text")
         record = SeqIO.read(handle, "genbank")
         handle.close()
-        return record.annotations["organism"]
+        return [record.annotations["taxonomy"], record.annotations["organism"]]
     except ValueError:
         return "Error"
 
 #Apply function on id's column from the file
-plasmid_blast_copy ["taxonomy"]= plasmid_blast_copy ["unique_id"].apply(search_Entrez)
+BLASTn_with_metadata2 [["taxonomy", "species"]]= BLASTn_with_metadata2 ["sseqid"].apply(search_Entrez, axis = 1, result_type='expand')
 
 #Merge BLASTn with plasmids metadata taxonomy and spacers taxonomy
-BLASTn_with_metadata = BLASTn_with_metadata.merge(plasmid_blast_copy, left_on='sseqid', right_on='id')
+BLASTn_with_metadata = BLASTn_with_metadata.merge(BLASTn_with_metadata2, on='sseqid')
 
-plasmid_blast_copy.to_csv("unique_taxonomy_specie_3.csv")
+BLASTn_with_metadata.to_csv("BLAST_DataBase.csv")
