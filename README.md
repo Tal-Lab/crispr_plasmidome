@@ -58,7 +58,7 @@ Change paths in network_table.py and uncomment necessary functions.
 
 ## Feedback
 
-If you have any feedback, please reach out to us at lucyandrosyuk@gmail.com.
+If you have any feedback, please reach out to us at lucyandrosyuk@gmail.com or leave a comment in Discussions.
 
 Please, include “CRISPR github” in the subject and specify your issue. 
 
