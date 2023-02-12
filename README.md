@@ -66,6 +66,7 @@ Please, include “CRISPR github” in the subject and specify your issue.
 
 ## Acknowledgements
 - We thank Maria Pilar Garcillan Barcia for discussions and great ideas  
-- Tal Shay for resources, discussions and advice - This study was supported (in part) by grant no. 3-17700 from the Office of the Chief Scientist, Israel Ministry of Health, as a part of the MAPMAR project (a part of the ERA-NET Cofund AquaticPollutants project). 
+- Tal Shay for resources, discussions and advice 
+- This study was supported (in part) by grant no. 3-17700 from the Office of the Chief Scientist, Israel Ministry of Health, as a part of the MAPMAR project (a part of the ERA-NET Cofund AquaticPollutants project). 
 - Lucy Androsiuk is the recipient of a Hi-Tech, Bio-Tech, and Chemo-tech fellowship of Ben363 Gurion University of the Negev.
 - The README was generated with the help of https://readme.so/editor
