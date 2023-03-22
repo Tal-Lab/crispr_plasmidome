@@ -7,6 +7,7 @@ Created on Sun Dec 11 19:02:23 2022
 
 import pandas as pd
 import search_Entrez
+import numpy as np
 
 plasmid_blast = search_Entrez.BLASTn_with_metadata
 #remove rows where qseqid == sseqid

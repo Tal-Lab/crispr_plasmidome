@@ -6,24 +6,19 @@ Created on Wed Mar 16 20:52:42 2022
 """
 
 import pandas as pd
-import pandas as pd
 import logging
-import pandas as pd
 import re
 import numpy as np
 import sys
 import getopt
 
-
 #Read BLASTn file
 plasmid_blast = pd.read_csv ("/path/to/Blast_ratio.csv", sep= ",",  header = 0)
 plasmid_blast_copy = plasmid_blast.copy()
 
-
 #Creating dataframe with unique plasmids ids
 plasmid_blast_copy2 = plasmid_blast_copy[["qseqid"]]
 plasmid_blast_copy2 = plasmid_blast_copy2.drop_duplicates()
-
 
 #Read PLSDB file - chosen columns with taxonomy
 with open("/path/to/the/plsdb/metadata/plsdb.tsv") as f:

@@ -9,7 +9,8 @@ import pandas as pd
 import numpy as np
 import sys
 
-plasmid_blast = pd.read_csv (sys.argv[1], sep= ",",  header = 0)
+#plasmid_blast = pd.read_csv (sys.argv[1], sep= ",",  header = 0)
+plasmid_blast = pd.read_csv (r"C:\Users\Lucy\Dev\crispr_plasmids\res\BLASTp_DataBase3.zip", sep= ",",  header = 0)
 #remove all rows where qseqid == sseqid
 concat_blast = plasmid_blast[plasmid_blast.qseqid != plasmid_blast.sseqid]
 
@@ -21,7 +22,7 @@ def Convert(string):
     return li
 
 
-concat_blast['spacer host taxonomy'] = df_blast['spacer host taxonomy'].apply(Convert)
+concat_blast['spacer host taxonomy'] = concat_blast['spacer host taxonomy'].apply(Convert)
 
 
 
@@ -34,16 +35,37 @@ def remove_groups(taxonomy):
         print(taxonomy)
     return taxonomy
 
-df_blast['spacer host taxonomy'] = df_blast['spacer host taxonomy'].apply(remove_groups)
+concat_blast['spacer host taxonomy'] = concat_blast['spacer host taxonomy'].apply(remove_groups)
 
 
+#setting ratio cutoff
+ratio_cutoff = 0.95
+identity_cutoff = 95
+print('printing before cutoff')
+print(concat_blast.shape)
+concat_blast = concat_blast.loc[concat_blast['ratio'] >= ratio_cutoff]
+print('printing after cutoff')
+print(concat_blast.shape)
 
+concat_blast = concat_blast.loc[concat_blast['mismatch'] <= 2]
+print('printing after cutoff')
+print(concat_blast.shape)
+
+concat_blast = concat_blast.loc[concat_blast['pident'] >= identity_cutoff]
+
+print('printing after cutoff')
+print(concat_blast.shape)
+concat_blast = concat_blast.loc[concat_blast['pident'] >= 100]
+print('printing after cutoff')
+print(concat_blast.shape)
+
+'''
 #making a list of qseqid
-list_of_qseqid = df_blast ['qseqid'].unique()
+list_of_qseqid = concat_blast ['qseqid'].unique()
 
 
 #creating new dataframe
-df_of_qseqid = pd.DataFrame(df_blast['qseqid'].unique())
+df_of_qseqid = pd.DataFrame(concat_blast['qseqid'].unique())
 df_of_qseqid['level of difference']= ""
 df_of_qseqid.rename(columns = {0:'qseqid'}, inplace = True)
 
@@ -51,11 +73,13 @@ df_of_qseqid.rename(columns = {0:'qseqid'}, inplace = True)
 
 #go over qseqid list and create a dataframe from all result of the specific id in blast
 for i in list_of_qseqid:
-    rslt_df = df_blast.loc[df_blast['qseqid'] == i]
+    print('i am going over qseqid list and create a dataframe from all result of the specific id in blast')
+    rslt_df = concat_blast.loc[concat_blast['qseqid'] == i]
     rslt_df = rslt_df.reset_index()
     rslt_df['level of difference'] = ""
     #go over rows of the temporary datafrme of the specific id and check if there are results for different hosts(taxonomy), if so check the level of difference
     for e in rslt_df.index:
+        print('i am going over rows of the temporary datafrme of the specific id and check if there are results for different hosts(taxonomy), if so check the level of difference')
         try:
             if len(rslt_df['spacer host taxonomy'][0]) != len(rslt_df['spacer host taxonomy'][e]):
                 if rslt_df['spacer host taxonomy'][0][1] != rslt_df['spacer host taxonomy'][e][1]:
@@ -90,7 +114,8 @@ for i in list_of_qseqid:
         except IndexError:
             if rslt_df['spacer host species'][0] != rslt_df['spacer host species'][e]:
                 rslt_df.loc[e,'level of difference'] = 'Species' 
-    #check the most far taxonomy difference            
+    #check the most far taxonomy difference
+    print('i am checking the most far taxonomy difference')
     if 'Phylum' in rslt_df['level of difference'].unique():
         df_of_qseqid['level of difference'][df_of_qseqid['qseqid'] == i ]= "6"
     elif 'Class' in rslt_df['level of difference'].unique():
@@ -108,7 +133,7 @@ for i in list_of_qseqid:
 #create datafrme to check the resone for rows with no results
 #if their is one hit for the qseqid, the resukt will be 1
 #if all hits are for the same host, the result will be equal   
-tut = df_of_qseqid [df_of_qseqid['level of difference'] == ""]
+tut = df_of_qseqid.loc[df_of_qseqid['level of difference'] == ""]
 tut = tut.reset_index()
 for d in tut['qseqid']:
     count_rows = concat_blast.loc[concat_blast['qseqid'] == d]
@@ -129,10 +154,12 @@ for d in tut['qseqid']:
         tut['level of difference'][tut['qseqid']== d]=  'check'
     elif 'yes' in count_rows['equal'].unique():
         tut['level of difference'][tut['qseqid']== d]=  'equal'
-        
-df_of_qseqid.to_csv('plasmids_grades_rsults.csv')                
-               
 
-tut.to_csv('blank_results.csv')
-    
-       
+print('printing with level of difference')
+print(df_of_qseqid.shape)
+df_of_qseqid.to_csv('plasmids_grades_results2.csv')
+
+print('printing blanks')
+print(tut.shape)
+tut.to_csv('blank_results2.csv')
+'''

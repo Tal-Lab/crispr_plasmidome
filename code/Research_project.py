@@ -6,7 +6,7 @@ Created on Wed Nov 17 13:30:50 2021
 """
 
 import Bio.Blast.Applications
-import os
+import os,sys
 
 #Turn spacer fasta file in to data base
 from Bio.Blast.Applications import NcbimakeblastdbCommandline

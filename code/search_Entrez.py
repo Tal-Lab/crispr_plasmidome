@@ -26,7 +26,7 @@ BLASTn_with_metadata = metadata.plasmid_blast_copy
 BLASTn_with_metadata2 = BLASTn_with_metadata[["sseqid"]]
 BLASTn_with_metadata2 = BLASTn_with_metadata2.drop_duplicates()
 
-Entrez.email = "maane@post.bgu.ac.il"  # Tell NCBI who you are
+Entrez.email = "androsiu@post.bgu.ac.il"  # Tell NCBI who you are
 
 #Pull specise from NCBI using Entrez.
 #In order to pull the rest of the taxonomy, change "organism" to "taxonomy".
