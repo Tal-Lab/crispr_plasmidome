@@ -24,9 +24,12 @@ Path(visuals).mkdir(parents=True, exist_ok=True)
 
 # working files
 copla_res = f"{tables}/results_tab.tsv"
-host_grades = f"{path}/plasmids_grades_rsults_update2/plasmids_grades_rsults_update2.csv"
-blank = f"{path}/plasmids_grades_rsults_update2/blank_results_update2.csv"
-match_update = f"{path}/match_update.csv"
+
+def work_files(cutoff):
+    host_grades = f"{tables}/plasmids_grades_results_{cutoff}.csv"
+    blank = f"{tables}/blank_results_{cutoff}.csv"
+    match_update = f"{path}/match_update_{cutoff}.csv"
+    return host_grades,blank,match_update
 
 def extract_name(x):
     try:
@@ -51,8 +54,8 @@ def mobile_copla():
     plasmids = df['Plasmid'].tolist()
     return plasmids
 
-def blank_grades(df):
-    df_blank = pd.read_csv(blank, header = 0, index_col = 0)
+def blank_grades(df, cutoff):
+    df_blank = pd.read_csv(work_files(cutoff)[1], header = 0, index_col = 0)
     df_blank.drop(['index'], axis = 1, inplace = True)
     df_1 = df_blank.loc[df_blank['level of difference'] != 'equal']
     plasmids_to_remove = df_1['qseqid'].unique().tolist()
@@ -63,9 +66,9 @@ def blank_grades(df):
     #df.Family.fillna(df['plasmid family'], inplace = True)
     return df
 
-def mob_grades():
-    df = pd.read_csv(host_grades, index_col = 0)
-    no_blank = blank_grades(df)
+def mob_grades(cutoff):
+    df = pd.read_csv(work_files(cutoff)[0], index_col = 0)
+    no_blank = blank_grades(df,cutoff)
     print(no_blank)
     mob_plasmids = mobile_copla()
     #no_blank['MOB'] = no_blank['qseqid'].apply(lambda x: 'MOB+' if x in mob_plasmids else 'MOB-')
@@ -75,10 +78,10 @@ def mob_grades():
     #print(df)
     mobile =  no_blank.loc[no_blank['MOB'] == 'MOB+']
     nonmobile = no_blank.loc[no_blank['MOB'] == 'MOB-']
-    mob_csv = f'{tables}/mobile_grades2.csv'
+    mob_csv = f'{tables}/mobile_grades_{cutoff}.csv'
     if not os.path.isfile(mob_csv) or os.stat(mob_csv).st_size == 0:
         mobile.to_csv(mob_csv, index = True)
-    nonmob_csv = f'{tables}/non_mobile_grades2.csv'
+    nonmob_csv = f'{tables}/non_mobile_grades_{cutoff}.csv'
     if not os.path.isfile(nonmob_csv) or os.stat(nonmob_csv).st_size == 0:
         nonmobile.to_csv(nonmob_csv, index = True)
     return no_blank
@@ -90,11 +93,11 @@ def selectFromTable(df, criterias):
         if len(filtered) > 0:
             return filtered
 
-def table_all_info():
+def table_all_info(cutoff):
     ''' This function generates general table containing all information about
         Plasmid, plsdb host lineage, host grade, mobility'''
     ### reading table with matches
-    df = pd.read_csv(match_update,header=0, index_col = [0,1])
+    df = pd.read_csv(work_files(cutoff)[2],header=0, index_col = 0)
     df = df[['qseqid', 'plasmid species', 'plasmid genus', 'plasmid family', 'plasmid order', 'plasmid class','plasmid phylum', 'match']]
     df.drop_duplicates(inplace = True)
 
@@ -110,14 +113,17 @@ def table_all_info():
         best_match = best_match.append(matched)
 
     ### obtaining mob+ and mob- dataframes from mob_grades(), filling NAs with 1, and concatenating
-    mob = mob_grades()
+    mob = mob_grades(cutoff)
     plasmids = mob['qseqid'].unique().tolist() # obtaining plasmids
     ### merging plasmid matches df with mobility df
     best_match = best_match.loc[best_match['qseqid'].isin(plasmids)]
     table = best_match.merge(mob, how='left', on = 'qseqid')
     ### writing resulting dataframe into csv
-    all_info = f'{tables}/all_info2.csv'
+    all_info = f'{tables}/all_info_{cutoff}.csv'
     if not os.path.isfile(all_info) or os.stat(all_info).st_size == 0:
         table.to_csv(all_info, index = True)
-
-#table_all_info()
+'''
+cutoff = [90, 95, 100]
+for i in cutoff:
+    table_all_info(i)
+'''
