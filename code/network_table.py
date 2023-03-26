@@ -27,9 +27,9 @@ pd.set_option('display.max_columns', None)
 ### paths
 ## uncomment relevant path to OS
 # Windows
-path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
+#path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
 # macOS
-#path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
+path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
 # Cluster
 # path = r"/gpfs0/tals/projects/Analysis/Lucy_plasmidome/Plasmidome/CRISPR"
 
@@ -41,8 +41,15 @@ Path(visuals).mkdir(parents=True, exist_ok=True)
 
 # working files
 blast_results = f"{resource}/BLAST_Database.csv"
-mobility = f"{tables}/mobile_grades.csv"
+#mobility = f"{tables}/mobile_grades.csv"
 all_ptus = f"{path}/PTUs-Mapi.xlsx"
+
+def work_files(cutoff):
+    host_grades = f"{path}/cutoffs/id_{cutoff}/plasmids_grades_results_{cutoff}.csv"
+    blank = f"{path}/cutoffs/id_{cutoff}/blank_results_{cutoff}.csv"
+    match_update = f"{path}/match_update_{cutoff}.csv"
+    mobility = f"{tables}/mobile_grades_{cutoff}.csv"
+    return host_grades,blank,match_update, mobility
 
 def colors_gen(x):
     print('Generating %d colors' % x)
@@ -109,7 +116,7 @@ def df_phylum():
 def color_nodes(query, level, file_name):
     pl = pd.DataFrame(query.dropna().unique(), columns=['id'])
     pl['type'] = 'plasmid'
-    pl['colors'] = '0,152,152'
+    pl['colors'] = '1,152,152'
     pl['size'] = 40.0
     fam = pd.DataFrame(level.dropna().unique(), columns=['id'])
     fam['type'] = fam['id']
@@ -533,7 +540,6 @@ def ptu_grades():
     PTU_hostrange = f'{tables}/PTU_HostRange-{suffix}.csv'
     one_more_df.to_csv(PTU_hostrange, mode ='a', index = False)
 
-
 def pivot_PTUs():
     #df = df_family()
     df = ptus()[0]
@@ -571,6 +577,37 @@ def pivot_PTUs():
     if not os.path.isfile(PTU_families) or os.stat(PTU_families).st_size == 0:
         df_merged.to_csv(PTU_families, index = True)
 
+def plasmid_species(cutoff):
+    df = pd.read_csv(work_files(cutoff)[2],header=0, index_col = 0)
+    df.drop(df.columns[[0, 1]], axis=1, inplace=True)
+    df = df.drop_duplicates(subset = ['qseqid','sseqid'],keep = 'first').reset_index(drop = True)
+    df['spacer host species'].fillna(df['plasmid species'], inplace = True)
+    df['spacer genus'].fillna(df['plasmid genus'], inplace = True)
+    df['spacer family'].fillna(df['plasmid family'], inplace = True)
+    df['spacer order'].fillna(df['plasmid order'], inplace = True)
+    df['spacer class'].fillna(df['plasmid class'], inplace = True)
+    df['spacer phylum'].fillna(df['plasmid phylum'], inplace = True)
+    df['spacer superkingdom'].fillna(df['plasmid superkingdom'], inplace = True)
+    df = df[['qseqid', 'evalue', 'ratio', 'pident', 'spacer host species',
+             'spacer genus', 'spacer family', 'spacer order', 'spacer class', 'spacer phylum']]
+    df = df.drop_duplicates(subset = ['qseqid','spacer family'],keep = 'first').reset_index(drop = True)
+    mob_df = pd.read_csv(work_files(cutoff)[3],header=0, index_col = 0)
+    mob_df = mob_df.groupby('qseqid').agg(MOB = ('MOB', ','.join)).reset_index()
+    df_withMOB = df.merge(mob_df, how = 'left', on = 'qseqid')
+    df_withMOB['MOB'] = df_withMOB['MOB'].fillna('MOB-')
+    grades_df = grades(cutoff)
+    grades_df = grades_df[['qseqid', 'level of difference']]
+    df_withMOB = df_withMOB.merge(grades_df, how = 'left', on = 'qseqid')
+    file_name = f'{tables}/plasmids_species_{cutoff}.csv'
+    if not os.path.isfile(file_name) or os.stat(file_name).st_size == 0:
+        df_withMOB.to_csv(file_name, index = True)
+    color_nodes(df_withMOB['qseqid'], df_withMOB['spacer family'], f'nodes_plasmid_Fam_{cutoff}')
+
+def cutoff():
+    cutoff = [90, 95, 100]
+    for i in cutoff:
+        plasmid_species(i)
+
 #ptu_network('no-nan') ### generating a table for network with ptus without nan
 #pivot_PTUs() ### generating pivot table with PTUs and Families in y, Families in y, and filled walues and presence percentage
 #PTU_family_phylum() ### generating table with PTU and its potential host family and phylum
@@ -579,3 +616,4 @@ def pivot_PTUs():
 #pivot_PlF() ### generating pivoted plasmid-family table
 #visual() ### making a heatmap of plasmid percentage in the families
 #ptu_grades() ### getting table with host range grades for PTUs
+#cutoff()

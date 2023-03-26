@@ -12,9 +12,9 @@ from pathlib import Path
 
 # uncomment relevant path to OS
 # Windows
-path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
+#path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
 # macOS
-#path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
+path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
 
 # working directories
 visuals = f"{path}/visualisations"
@@ -26,8 +26,8 @@ Path(visuals).mkdir(parents=True, exist_ok=True)
 copla_res = f"{tables}/results_tab.tsv"
 
 def work_files(cutoff):
-    host_grades = f"{tables}/plasmids_grades_results_{cutoff}.csv"
-    blank = f"{tables}/blank_results_{cutoff}.csv"
+    host_grades = f"{path}/cutoffs/id_{cutoff}/plasmids_grades_results_{cutoff}.csv"
+    blank = f"{path}/cutoffs/id_{cutoff}/blank_results_{cutoff}.csv"
     match_update = f"{path}/match_update_{cutoff}.csv"
     return host_grades,blank,match_update
 
@@ -57,34 +57,36 @@ def mobile_copla():
 def blank_grades(df, cutoff):
     df_blank = pd.read_csv(work_files(cutoff)[1], header = 0, index_col = 0)
     df_blank.drop(['index'], axis = 1, inplace = True)
+
     df_1 = df_blank.loc[df_blank['level of difference'] != 'equal']
     plasmids_to_remove = df_1['qseqid'].unique().tolist()
-    #print(plasmids_to_remove)
     df['qseqid'] = df['qseqid'].apply(lambda x: x if x not in plasmids_to_remove else 'remove')
     df = df.loc[df['qseqid'] != 'remove']
     df['level of difference'].fillna(1, inplace = True)
+
     #df.Family.fillna(df['plasmid family'], inplace = True)
     return df
 
 def mob_grades(cutoff):
+    ''' If you need to remove those blanks, which are not equal,
+     comment line 74, uncomment no_blank 75 and others and change df into no_blank '''
     df = pd.read_csv(work_files(cutoff)[0], index_col = 0)
-    no_blank = blank_grades(df,cutoff)
-    print(no_blank)
+    df['level of difference'].fillna(1, inplace = True)
+    #no_blank = blank_grades(df,cutoff)
     mob_plasmids = mobile_copla()
     #no_blank['MOB'] = no_blank['qseqid'].apply(lambda x: 'MOB+' if x in mob_plasmids else 'MOB-')
-    no_blank.loc[no_blank['qseqid'].isin(mob_plasmids), 'MOB'] = 'MOB+'
-    no_blank.loc[~no_blank['qseqid'].isin(mob_plasmids), 'MOB'] = 'MOB-'
+    df.loc[df['qseqid'].isin(mob_plasmids), 'MOB'] = 'MOB+'
+    df.loc[~df['qseqid'].isin(mob_plasmids), 'MOB'] = 'MOB-'
     #no_blank['level of difference'] = no_blank['level of difference'].fillna(1)
-    #print(df)
-    mobile =  no_blank.loc[no_blank['MOB'] == 'MOB+']
-    nonmobile = no_blank.loc[no_blank['MOB'] == 'MOB-']
+    mobile =  df.loc[df['MOB'] == 'MOB+']
+    nonmobile = df.loc[df['MOB'] == 'MOB-']
     mob_csv = f'{tables}/mobile_grades_{cutoff}.csv'
     if not os.path.isfile(mob_csv) or os.stat(mob_csv).st_size == 0:
         mobile.to_csv(mob_csv, index = True)
     nonmob_csv = f'{tables}/non_mobile_grades_{cutoff}.csv'
     if not os.path.isfile(nonmob_csv) or os.stat(nonmob_csv).st_size == 0:
         nonmobile.to_csv(nonmob_csv, index = True)
-    return no_blank
+    return df
 
 def selectFromTable(df, criterias):
     for index, criteria in enumerate(criterias):
@@ -103,7 +105,8 @@ def table_all_info(cutoff):
 
     ### group table by Plasmids to select only best match - the closest to PLSDB
     grouped = df.groupby('qseqid')
-    # creating empty df for best matches
+
+    ### creating empty df for best matches
     best_match = pd.DataFrame(columns = ['qseqid', 'plasmid species', 'plasmid genus', 'plasmid family', 'plasmid order', 'plasmid class','plasmid phylum', 'match'])
     criteria_list = ['Species', 'Genus', 'Family', 'Order', 'Class', 'Phylum', 'Superkingdom']
     for name, group in grouped:
@@ -115,15 +118,16 @@ def table_all_info(cutoff):
     ### obtaining mob+ and mob- dataframes from mob_grades(), filling NAs with 1, and concatenating
     mob = mob_grades(cutoff)
     plasmids = mob['qseqid'].unique().tolist() # obtaining plasmids
+
     ### merging plasmid matches df with mobility df
     best_match = best_match.loc[best_match['qseqid'].isin(plasmids)]
     table = best_match.merge(mob, how='left', on = 'qseqid')
+
     ### writing resulting dataframe into csv
     all_info = f'{tables}/all_info_{cutoff}.csv'
     if not os.path.isfile(all_info) or os.stat(all_info).st_size == 0:
         table.to_csv(all_info, index = True)
-'''
+
 cutoff = [90, 95, 100]
 for i in cutoff:
     table_all_info(i)
-'''
