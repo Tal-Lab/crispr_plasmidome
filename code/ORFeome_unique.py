@@ -45,32 +45,42 @@ logging.debug("I'm inside the python file")
 
 def search_Entrez (x):
     '''getting orfeome for each spacer-barer id'''
-    logging.debug("Entering search_Entrez function")
+    print("Entering search_Entrez function")
     Entrez.email = email  # Tell NCBI who you are
     Entrez.sleep_between_tries = 20  #Tell NCBI delay, in seconds, before retrying a request
     try:
-        logging.debug("############## Obtaining proteins for %s ##############", x)
+        print("############## Obtaining proteins for %s ##############", x)
         handle = Entrez.efetch(db="nuccore", id= x, rettype="fasta_cds_aa", retmode="text")
         records = SeqIO.parse(handle, "fasta")
         ids = []
         p_names = []
         seqs = []
+        p_starts = []
+        p_ends = []
         for record in records:
             if record.description.__contains__('[pseudo=true]'):
                 pass
             else:
+                #print('Printing record')
+                #print(record)
                 id = record.id[4:]
                 ids.append(id)
                 description = record.description
-                parts = description.split()
-                p = parts[2:-3]
-                p = " ".join(p)
-                p_name = p[9:-1]
+                parts = description.split('[')
+                p_loc_info = parts[-2]
+                p_loc = re.findall(r'\d+', p_loc_info)
+                p_start = p_loc[0]
+                p_end = p_loc[-1]
+                p_starts.append(p_start)
+                p_ends.append(p_end)
+                p = parts[-4]
+                p_name = p[8:-2]
                 p_names.append(p_name)
                 sequence = str(record.seq)
                 seqs.append(sequence)
-        df = pd.DataFrame({'ID': ids, 'P_Name': p_names, 'Sequence': seqs})
-        logging.debug("############## Proteins for %s obtained ##############", x)
+        df = pd.DataFrame({'ID': ids, 'P_Name': p_names, 'P_start':p_starts, 'P_end':p_ends, 'Sequence': seqs})
+        print(df)
+        print("############## Proteins for %s obtained ##############", x)
         #print(record.annotations["structured_comment"])
         handle.close()
         return df
