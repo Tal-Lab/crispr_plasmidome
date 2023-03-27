@@ -400,7 +400,7 @@ def ptus ():
     df_fam.PTU.fillna('missing', inplace = True)
     print(df_no_nan['qseqid'].nunique())
     #print(df_fam['PTU'].unique())
-    return df_fam, df_no_nan
+    return df_fam, df_no_nan, df
 
 def ptu_network(dataset):
     if dataset == 'no-nan':
@@ -602,12 +602,25 @@ def plasmid_species(cutoff):
     if not os.path.isfile(file_name) or os.stat(file_name).st_size == 0:
         df_withMOB.to_csv(file_name, index = True)
     color_nodes(df_withMOB['qseqid'], df_withMOB['spacer family'], f'nodes_plasmid_Fam_{cutoff}')
+    return df_withMOB
+
+def HRG_comparison(cutoff):
+    df = pd.read_excel(all_ptus, header = 1)
+    df = df[["AccessionVersion", "PTU", "Hrange (1)"]]
+    df = df.rename(columns = {'AccessionVersion': 'qseqid', "Hrange (1)": "Hrange"})
+    #print(df)
+    df_init = plasmid_species(cutoff)
+    df_merged = df.merge(df_init, on = 'qseqid')
+    print(df_merged)
+    ##### i need to do statistics on it
+
 
 def cutoff():
     cutoff = [90, 95, 100]
     for i in cutoff:
         plasmid_species(i)
 
+HRG_comparison(90)
 #ptu_network('no-nan') ### generating a table for network with ptus without nan
 #pivot_PTUs() ### generating pivot table with PTUs and Families in y, Families in y, and filled walues and presence percentage
 #PTU_family_phylum() ### generating table with PTU and its potential host family and phylum
