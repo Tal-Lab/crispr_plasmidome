@@ -94,13 +94,18 @@ def plasmids(cutoff):
 
     df_range = pd.read_csv(work_files(cutoff)[3], sep = ',', header = 0, index_col = 0)
     df_range = df_range[['qseqid', 'level of difference', 'MOB']]
-    df_6 = df_range.loc[df_range['level of difference']==6]
-    plasmids = df_6['qseqid'].unique().tolist()
+    #df_6 = df_range.loc[df_range['level of difference']==6]
+    #plasmids = df_6['qseqid'].unique().tolist()
+    plasmids = df_range['qseqid'].unique().tolist()
     print(len(plasmids))
     df_proteins = pd.DataFrame()
-    for plasmid in plasmids:
-        df_proteins = df_proteins.append(search_Entrez(plasmid))
-    df_proteins['qseqid'] = df_proteins['ID'].apply(lambda x: x.split('_', 1)[0])
+    all_proteins_csv = f'{tables}/all_proteins_90.csv'
+    if not os.path.isfile(all_proteins_csv) or os.stat(all_proteins_csv).st_size == 0:
+        for plasmid in plasmids:
+            df_proteins = df_proteins.append(search_Entrez(plasmid))
+        df_proteins['qseqid'] = df_proteins['ID'].apply(lambda x: x.split('_', 1)[0])
+        df_proteins.to_csv(all_proteins_csv, index = True)
+
     df_spacer = df_spacer.loc[df_spacer['qseqid'].isin(plasmids)]
 
     # merge the two dataframes based on the chromosome column
@@ -121,4 +126,4 @@ def cutoff():
     for i in cutoff:
         plasmids(i)
 
-cutoff()
+#cutoff()
