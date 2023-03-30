@@ -608,19 +608,39 @@ def HRG_comparison(cutoff):
     df = pd.read_excel(all_ptus, header = 1)
     df = df[["AccessionVersion", "PTU", "Hrange (1)"]]
     df = df.rename(columns = {'AccessionVersion': 'qseqid', "Hrange (1)": "Hrange"})
+    df = df.loc[df['Hrange'] != '-']
     #print(df)
     df_init = plasmid_species(cutoff)
     df_merged = df.merge(df_init, on = 'qseqid')
-    print(df_merged)
-    ##### i need to do statistics on it
+    df_merged.loc[df_merged['Hrange'] == 'I', 'Hrange'] = 1.0
+    df_merged.loc[df_merged['Hrange'] == 'II', 'Hrange'] = 2.0
+    df_merged.loc[df_merged['Hrange'] == 'III', 'Hrange'] = 3.0
+    df_merged.loc[df_merged['Hrange'] == 'IV', 'Hrange'] = 4.0
+    df_merged.loc[df_merged['Hrange'] == 'V', 'Hrange'] = 5.0
+    df_merged.loc[df_merged['Hrange'] == 'VI', 'Hrange'] = 6.0
+    #print(df_merged)
+    df_merged = df_merged.drop_duplicates('qseqid', keep = 'first')
+    ##### Calculating all rows
+    print(len(df_merged))
+    print(df_merged['qseqid'].nunique())
+    all_rows = len(df_merged)
+    #### calculating matches
+    matches = (df_merged['Hrange'] == df_merged['level of difference']).sum()
+    print(matches)
+    print(matches/all_rows*100)
+    non_matches = all_rows - matches
+    print(non_matches)
+    print(non_matches / all_rows * 100)
+
 
 
 def cutoff():
     cutoff = [90, 95, 100]
     for i in cutoff:
-        plasmid_species(i)
+        HRG_comparison(i)
 
-HRG_comparison(90)
+#HRG_comparison(90)
+cutoff()
 #ptu_network('no-nan') ### generating a table for network with ptus without nan
 #pivot_PTUs() ### generating pivot table with PTUs and Families in y, Families in y, and filled walues and presence percentage
 #PTU_family_phylum() ### generating table with PTU and its potential host family and phylum
