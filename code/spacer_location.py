@@ -23,9 +23,9 @@ pd.set_option('display.max_rows', None)
 email = "androsiu@post.bgu.ac.il"  # Tell NCBI who you are
 # uncomment relevant path to OS
 # Windows
-#path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
+path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
 # macOS
-path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
+#path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
 # Cluster
 #path = r"/gpfs0/tals/projects/Analysis/Lucy_plasmidome/Plasmidome/CRISPR"
 
@@ -34,17 +34,16 @@ visuals = f"{path}/visualisations"
 tables = f"{path}/data_calculations"
 resource = f"{path}/res"
 Path(visuals).mkdir(parents=True, exist_ok=True)
-proteins_csv = f'{tables}/all_proteins_90.csv'
-pseudo_proteins_csv = f'{tables}/pseudo_proteins_90.csv'
+proteins_csv = f'{tables}/all_proteins.zip'
+proteins2_csv = f'{tables}/all_proteins_90_2.csv'
+#pseudo_proteins_csv = f'{tables}/pseudo_proteins_90.csv'
 
 def work_files(cutoff):
     host_grades = f"{path}/cutoffs/id_{cutoff}/plasmids_grades_results_{cutoff}.csv"
     blank = f"{path}/cutoffs/id_{cutoff}/blank_results_{cutoff}.csv"
-    match_update = f"{path}/match_update_{cutoff}.csv"
-    all_info = f"{tables}/all_info_{cutoff}.csv"
+    match_update = f"{path}/cutoffs/id_{cutoff}/match_update_{cutoff}.csv"
+    all_info = f"{path}/cutoffs/id_{cutoff}/all_info_{cutoff}.csv"
     return host_grades, blank, match_update, all_info
-
-
 
 def spacers_locations(cutoff):
     df_spacer = pd.read_csv(work_files(cutoff)[2], sep = ',', header = 0, index_col = 0)
@@ -53,21 +52,48 @@ def spacers_locations(cutoff):
     df_range = df_range[['qseqid', 'level of difference', 'MOB']]
     # df_6 = df_range.loc[df_range['level of difference']==6]
     # plasmids = df_6['qseqid'].unique().tolist()
-    print(df_range['qseqid'].unique().tolist())
+    #print(df_range['qseqid'].unique().tolist())
     df_proteins = pd.read_csv(proteins_csv, sep = ',', header = 0, index_col = 0)
-    #print(df_proteins.columns)
+    n = 1713821 # number of rows in first try
+    df_proteins_new = df_proteins.iloc[n:, :]
+    df_proteins_new = df_proteins_new.drop(['qseqid'], axis = 1)
+    df_proteins_new = df_proteins_new.rename(
+        columns = {"ID": "P_Name", 'P_Name': 'P_start', 'P_start': 'P_end', 'P_end': 'Sequence', 'Sequence': 'qseqid'})
+    df_proteins_new = df_proteins_new.rename_axis('ID').reset_index()
 
-    print(df_proteins['qseqid'].nunique())
-    df_proteins = df_proteins.rename(columns={"ID": "P_ID", 'Sequence': 'P_Sequence'})
-    df_proteins = df_proteins[['P_ID', 'P_Name', 'P_start', 'P_end', 'qseqid']]
+    df_proteins2 = pd.read_csv(proteins2_csv, sep = ',', header = None, index_col = 0)
+    df_proteins2.columns = ['ID',"P_Name", 'P_start', 'P_end',  'Sequence', 'qseqid']
+    #print(df_proteins2)
 
+    df_proteins = df_proteins.iloc[:n, :]
+    df_proteins = df_proteins.reset_index(drop=True)
+    df_proteins_upd = pd.concat([df_proteins,df_proteins_new, df_proteins2])
+    df_proteins_upd['qseqid'] = df_proteins_upd['ID'].apply(lambda x: x.split('_', 1)[0] if (len(x.split('_', 1)[0]) > 2) else '_'.join(x.split('_', 2)[:2]))
+    print(df_proteins_upd['qseqid'].nunique())
+
+    list_of_plasmids = df_proteins_upd['qseqid'].unique().tolist()
+    list_of_plasmids = df_proteins_upd['qseqid'].unique().tolist()
+    all_plasmids = df_range['qseqid'].unique().tolist()
+    difference_result = []
+    for pl in all_plasmids:
+        if pl not in list_of_plasmids:
+            difference_result.append(pl)
+
+    print(difference_result)
+    with open(f'{tables}/plasmids_missing.txt', 'w') as fp:
+        fp.write('\n'.join(difference_result))
+
+    #print(df_proteins_upd.sample(n=200))
+    #df_proteins = df_proteins.rename(columns={"ID": "P_ID", 'Sequence': 'P_Sequence'})
+    #df_proteins = df_proteins[['P_ID', 'P_Name', 'P_start', 'P_end', 'qseqid']]
+    '''
     df_pseudo_proteins = pd.read_csv(pseudo_proteins_csv, sep = ',', header = 0, index_col = 0)
     #print(df_pseudo_proteins.columns)
 
     print(df_pseudo_proteins['qseqid'].nunique())
     df_pseudo_proteins = df_pseudo_proteins.rename(columns={"ID": "Ps_ID", 'P_Name': 'Ps_Name', 'P_start':'Ps_start', 'P_end':'Ps_end', 'Sequence': 'Ps_Sequence'})
     df_pseudo_proteins = df_pseudo_proteins[['Ps_ID', 'Ps_Name', 'Ps_start', 'Ps_end','qseqid']]
-
+    
     # create an empty list to store the matches
     all_matches = []
     ids = df_proteins['qseqid'].unique().tolist()
@@ -182,10 +208,11 @@ def spacers_locations(cutoff):
     print(df_all_matches)
     # write the results to a new CSV file
     df_all_matches.to_csv(f'{tables}/all_matches_{cutoff}.csv', index = False)
-
+    '''
+spacers_locations(90)
 def cutoff():
     cutoff = [90, 95, 100]
     for i in cutoff:
         spacers_locations(i)
 
-cutoff()
+#cutoff()
