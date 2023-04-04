@@ -1,86 +1,40 @@
-# -*- coding: utf-8 -*-
 """
-Created on 02/04/2023 15:04
+Created on 04/04/2023
 
-Author: Lucy
+Author: Lucy Androsiuk
 """
 
+### importing modules
+import os, re
 import pandas as pd
 from Bio import Entrez
 from Bio import SeqIO
-from Bio.SeqRecord import SeqRecord
-from Bio.Seq import Seq
-from Bio.SeqFeature import ExactPosition, FeatureLocation, CompoundLocation
-import os, re
+from pathlib import Path
+import logging
 
-
+#pd.set_option('display.max_colwidth', None)
+### paths
 email = "androsiu@post.bgu.ac.il"  # Tell NCBI who you are
+# uncomment relevant path to OS
+# Windows
+#path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
+# macOS
+#path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
+# Cluster
+path = r"/gpfs0/tals/projects/Analysis/Lucy_plasmidome/Plasmidome/CRISPR"
 
-plasmids = ['AP019704.1', 'NZ_LT719075.1', 'NZ_CP050379.1']
+# working directories
+visuals = f"{path}/visualisations"
+tables = f"{path}/data_calculations"
+resource = f"{path}/res"
+Path(visuals).mkdir(parents=True, exist_ok=True)
 
-def search_Entrez (x):
-    '''getting orfeome for each spacer-barer id'''
-    print("Entering search_Entrez function with plasmid ", x)
-    Entrez.email = email  # Tell NCBI who you are
-    Entrez.sleep_between_tries = 20  #Tell NCBI delay, in seconds, before retrying a request
-    try:
-        print("############## Obtaining proteins for %s ##############", x)
-        handle = Entrez.efetch(db="nuccore", id= x, rettype="fasta_cds_aa", retmode="text")
-        records = SeqIO.parse(handle, "fasta")
-        ids = []
-        p_names = []
-        seqs = []
-        p_starts = []
-        p_ends = []
-        for record in records:
-            if record.description.__contains__('[pseudo=true]'):
-                print("!!!!!!!!!!!!!! PSEUDO")
-                #print(record)
-                id = record.id[4:]
-                ids.append(id)
-                description = record.description
-                parts = description.split('[')
-                #print(parts)
-                p_loc_info = parts[-2]
-                p_loc = re.findall(r'\d+', p_loc_info)
-                p_start = int(p_loc[0])
-                p_end = int(p_loc[-1])
-                p_starts.append(p_start)
-                p_ends.append(p_end)
-                p_name = [match[8:-2] for match in parts if 'protein' in match]
-                if p_name == []:
-                    p_name = [match[11:-2] for match in parts if 'pseudogene' in match]
-                print(p_name)
-                p_names.append(p_name)
-                sequence = str(record.seq)
-                seqs.append(sequence)
-            else:
-                pass
+# working files
+plasmids_df = f"{path}/match_update_90.csv"
+all_features_csv = f'{tables}/all_features.csv'
 
-            ''' 
-            
-            description = record.description
-            parts = description.split('[')
-            p_loc_info = parts[-2]
-            p_loc = re.findall(r'\d+', p_loc_info)
-            p_start = int(p_loc[0])
-            p_end = int(p_loc[-1])
-            p_starts.append(p_start)
-            p_ends.append(p_end)
-            p = parts[-4]
-            p_name = p[8:-2]
-            p_names.append(p_name)
-            sequence = str(record.seq)
-            seqs.append(sequence)
-            '''
-        df = pd.DataFrame({'ID': ids, 'P_Name': p_names, 'P_start':p_starts, 'P_end':p_ends, 'Sequence': seqs})
-        #print(df)
-        print("############## Proteins for %s obtained ##############", x)
-        #print(record.annotations["structured_comment"])
-        handle.close()
-        return df
-    except Exception as e:
-        print(e)
+logging.basicConfig(filename=f'{path}/log_all_features.log', format = '%(asctime)s - %(levelname)s - %(message)s', level=logging.DEBUG)
+logging.debug("I'm inside the python file")
 
 def get_feature_start_end(feature):
     location = feature.location
@@ -101,8 +55,8 @@ def get_feature_start_end(feature):
             end = sublocations[0].end
     return start, end
 
-
-def search_Entrez2(x):
+def search_Entrez(x):
+    logging.debug('Entered search_Entrez for plasmid %s' % x)
     Entrez.email = email
     Entrez.sleep_between_tries = 20  # Tell NCBI delay, in seconds, before retrying a request
     try:
@@ -187,15 +141,12 @@ def search_Entrez2(x):
                 seqs.append(sequence)
 
             else:
-                print('!!!!! %s !!!!!' % feature.type)
                 pl_ids.append(x)
                 #### feature type
                 p_type = feature.type
                 p_types.append(p_type)
                 #### location
                 start, end = get_feature_start_end(feature )
-                print(feature.location)
-                print(start, end)
                 p_starts.append(start)
                 p_ends.append(end)
                 #### qualifiers
@@ -249,13 +200,17 @@ def search_Entrez2(x):
                 seqs.append(sequence)
         df = pd.DataFrame({'qseqid': pl_ids, 'Type': p_types, 'ID': ids, 'P_Name': p_names, 'GO_function': go_funcs,
                            'P_start': p_starts, 'P_end': p_ends, 'Sequence': seqs})
-        print(df)
-        print("############## Proteins for %s obtained ##############", x)
+        logging.debug("############## Features for %s obtained ##############", x)
+        if not os.path.isfile(all_features_csv) or os.stat(all_features_csv).st_size == 0:
+            df.to_csv(all_features_csv, mode = 'a', index = True, header = True)
+        else:
+            df.to_csv(all_features_csv, mode = 'a', index = True, header = False)
         # print(record.annotations["structured_comment"])
         handle.close()
     except Exception as e:
-        print(e)
+        logging.debug(e)
 
-
-for plasmid in plasmids:
-    search_Entrez2(plasmid)
+df_range = pd.read_csv(plasmids_df, sep = ',', header = 0, index_col = 0)
+plasmids_list = df_range['qseqid'].unique().tolist()
+for plasmid in plasmids_list:
+    search_Entrez(plasmid)
