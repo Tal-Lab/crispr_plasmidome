@@ -22,45 +22,51 @@ from scipy import stats
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 
-#pd.set_option('display.max_colwidth', None)
+# pd.set_option('display.max_colwidth', None)
 ### paths
 email = "androsiu@post.bgu.ac.il"  # Tell NCBI who you are
 # uncomment relevant path to OS
 # Windows
-#path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
+# path = r"C:\Users\Lucy\iCloudDrive\Documents\bengurion\Project students\Sivan_project"
 # macOS
 path = r"/Users/lucyandrosiuk/Documents/bengurion/Project students/Sivan_project"
 # Cluster
-#path = r"/gpfs0/tals/projects/Analysis/Lucy_plasmidome/Plasmidome/CRISPR"
+# path = r"/gpfs0/tals/projects/Analysis/Lucy_plasmidome/Plasmidome/CRISPR"
 
 # working directories
 visuals = f"{path}/visualisations"
 tables = f"{path}/data_calculations"
 resource = f"{path}/res"
-Path(visuals).mkdir(parents=True, exist_ok=True)
+Path(visuals).mkdir(parents = True, exist_ok = True)
 features = f'{tables}/all_features.csv'
 
-def work_files(cutoff):
-    #host_grades = f"{path}/cutoffs/id_{cutoff}/plasmids_grades_results_{cutoff}.csv"
-    #blank = f"{path}/cutoffs/id_{cutoff}/blank_results_{cutoff}.csv"
+
+def work_files (cutoff):
+    # host_grades = f"{path}/cutoffs/id_{cutoff}/plasmids_grades_results_{cutoff}.csv"
+    # blank = f"{path}/cutoffs/id_{cutoff}/blank_results_{cutoff}.csv"
     match_update = f"{path}/match_update_{cutoff}.csv"
     all_info = f"{tables}/all_info_{cutoff}.csv"
-    #return host_grades, blank, match_update, all_info
+    # return host_grades, blank, match_update, all_info
     return match_update, all_info
 
-def spacers_locations(cutoff):
+
+def spacers_locations (cutoff):
     df_spacer = pd.read_csv(work_files(cutoff)[0], sep = ',', header = 0, index_col = 0)
     df_spacer = df_spacer[['qseqid', 'sseqid', 'length', 'ratio', 'qstart', 'qend', 'match']]
-
+    print(len(df_spacer))
+    print(len(df_spacer.drop_duplicates()))
     df_features = pd.read_csv(features, sep = ',', header = 0, index_col = 0)
     list_of_plasmids = df_features['qseqid'].unique().tolist()
-
-    all_plasmids = df_range['qseqid'].unique().tolist()
+    print(len(list_of_plasmids))
+    all_plasmids = df_spacer['qseqid'].unique().tolist()
+    df_new = df_spacer.loc[df_spacer['qseqid'].isin(list_of_plasmids)]
+    print(len(df_new))
+    print(df_new['qseqid'].nunique())
     difference_result = []
     for pl in all_plasmids:
         if pl not in list_of_plasmids:
             difference_result.append(pl)
-
+    print(len(difference_result))
     '''
     with open(f'{tables}/plasmids_missing.txt', 'w') as fp:
         fp.write('\n'.join(difference_result))
@@ -115,60 +121,84 @@ def spacers_locations(cutoff):
 
     # create a new dataframe with all matches
     df_all_matches = pd.DataFrame(all_matches)
-    print(df_all_matches.sample(n=200))
+    print(df_all_matches.sample(n = 200))
 
     # write the results to a new CSV file
     df_all_matches.to_csv(f'{tables}/all_matchesF_{cutoff}.csv', index = True)
 
 
-def spacers_loc_HR(cutoff):
-    df= pd.read_csv(f'{tables}/all_matchesF_{cutoff}.csv', header = 0, index_col = 0)
+def spacers_loc_HR (cutoff):
+    df = pd.read_csv(f'{tables}/all_matchesF_{cutoff}.csv', header = 0, index_col = 0)
     df_range = pd.read_csv(work_files(cutoff)[1], sep = ',', header = 0, index_col = 0)
     df_range = df_range[['qseqid', 'level of difference', 'MOB']]
-    print(df.columns)
-    df_merged = df.merge(df_range, left_on = 'genome_id', right_on='qseqid')
-    df_merged = df_merged.drop('qseqid', axis=1)
-    print(df_merged.sample(n=50))
+    df_merged = df.merge(df_range, left_on = 'genome_id', right_on = 'qseqid')
+    df_merged = df_merged.drop('qseqid', axis = 1)
+    print(df_merged.sample(n = 50))
     df_merged.to_csv(f'{tables}/all_matches_HR_{cutoff}.csv', index = True)
 
-def read_loc(cutoff):
+def read_loc (cutoff):
     df = pd.read_csv(f'{tables}/all_matches_HR_{cutoff}.csv', header = 0, index_col = 0)
     df = df.drop_duplicates()
     df = df.loc[df['genome_id'] != df['Spacer_ID']]
-    print(df.columns)
-    #print(df.sample(100))
+    #print(df.columns)
+    '''Index(['genome_id', 'Feature_Type', 'Feature_ID', 'Feature_Name',
+           'GO_function', 'Spacer_ID', 'Match_Start', 'Match_End',
+           'Within_Feature', 'level of difference', 'MOB']'''
+    #df_grouped = df.groupby(['genome_id', 'Spacer_ID', 'Match_Start', 'Match_End'])
+    agg_functions ={'Feature_Type': lambda x: ', '.join(str(x)),
+                 'Feature_ID': lambda x: ', '.join(str(x)),
+                 'Feature_Name': lambda x: ', '.join(str(x)),
+                 'GO_function': lambda x: ', '.join(str(x)),
+                 'Within_Feature': lambda x: ', '.join(str(x)),
+                 'level of difference': 'first',
+                 'MOB': 'first'}
+    df_grouped = df.astype(str).groupby(['genome_id', 'Spacer_ID', 'Match_Start', 'Match_End']).agg(', ' .join).reset_index()
+    df_grouped.to_csv(f'{tables}/shay_features_{cutoff}.csv', index = True)
+    print(len(df_grouped.loc[df_grouped['Within_Feature'].str.contains('True', case=False)]))
+    print(len(df_grouped))
     df_true = df.loc[df['Within_Feature'] == True]
-    df_repeat = df.loc[df['Feature_Type']=='repeat_region']
-    df_mobile = df_true.loc[df_true['Feature_Type']=='mobile_element']
-    #df_mobile.to_csv(f'{tables}/mobile_element_{cutoff}.csv', index = True)
-    #print(df_repeat.sample(100))
-    #print(df_true['Feature_Name'].unique())
-    print(df_true['Feature_Name'].value_counts(normalize = True))
-    print(df_true['Feature_Type'].value_counts())
+    
+    # df_dupl.to_csv(f'{tables}/hitsfeature_{cutoff}.csv', index = True)
+    df_repeat = df.loc[df['Feature_Type'] == 'repeat_region']
+    df_mobile = df_true.loc[df_true['Feature_Type'] == 'mobile_element']
+    # df_mobile.to_csv(f'{tables}/mobile_element_{cutoff}.csv', index = True)
+    # print(df_repeat.sample(100))
+    # print(df_true['Feature_Name'].unique())
+    # print(df_true['Feature_Name'].value_counts(normalize = True))
+    # print(df_true['Feature_Type'].value_counts())
     feature_frequency = df_true['Feature_Name'].value_counts(normalize = True)
-    #feature_frequency.to_csv(f'{tables}/feature_freq_{cutoff}.csv', index = True)
-    print(len(df_true))
-    print(len(df))
+    # feature_frequency.to_csv(f'{tables}/feature_freq_{cutoff}.csv', index = True)
+    #print(len(df_true))
+    #print(len(df))
     return df
+#spacers_locations(100)
 
-def get_dupl(cutoff):
+def get_dupl (cutoff):
     df = read_loc(cutoff)
     df = df.drop_duplicates()
-    dupl = df[df[['genome_id', 'Spacer_ID']].duplicated()]
-    dupl.to_csv(f'{tables}/Multiple_{cutoff}.csv', index = True)
+    print(df.columns)
+    # df_mism = df.loc[df['length']>df['']]
+    # dupl = df[df[['genome_id', 'Spacer_ID']].duplicated()]
+    # dupl.to_csv(f'{tables}/Multiple_{cutoff}.csv', index = True)
 
 
-def get_stats(cutoff):
+def get_stats (cutoff):
     df = pd.read_csv(work_files(cutoff)[0], header = 0, index_col = 0)
-    print(df.head)
-    df = df[['qseqid','sseqid', 'qstart', 'qend']]
+    print(df.columns)
+    df = df[['qseqid', 'sseqid', 'qstart', 'qend', 'spacer host species']]
     df = df.drop_duplicates()
-    dupl = df[df[['qseqid','sseqid']].duplicated()]
-    print(dupl['qseqid'].unique())
+    print(df.sample(100))
+    #dupl = df[df[['qseqid', 'sseqid']].duplicated()]
+    #print(dupl['qseqid'].unique())
+
+    ### counting statistcs for species per plasmid
+    df_species_plasmid = df.groupby('qseqid')['spacer host species'].agg(['unique', 'nunique'])
+    df_species_plasmid.to_csv(f'{tables}/Species_per_Plasmid_{cutoff}.csv', index = True)
+    print(df_species_plasmid.describe())
 
     ### counting statistcs for hits per plasmid
-    df_hits_plasmid = df['qseqid'].value_counts().reset_index(name='Number of hits')
-    df_hits_plasmid.to_csv(f'{tables}/Hits_per_Plasmid_{cutoff}.csv', index = True)
+    df_hits_plasmid = df['qseqid'].value_counts().reset_index(name = 'Number of hits')
+    #df_hits_plasmid.to_csv(f'{tables}/Hits_per_Plasmid_{cutoff}.csv', index = True)
     # print the statistics
     print(df_hits_plasmid.describe())
 
@@ -183,17 +213,17 @@ def get_stats(cutoff):
     png_name = f"HitsPerPlasmidHisto_{cutoff}.png"
     png_dir = f'{visuals}/{png_name}'
     # plt.autoscale()
-    plt.savefig(svg_dir, format = 'svg', dpi = gcf().dpi, bbox_inches = 'tight')
-    plt.savefig(png_dir, format = 'png', dpi = gcf().dpi, bbox_inches = 'tight')
+    #plt.savefig(svg_dir, format = 'svg', dpi = gcf().dpi, bbox_inches = 'tight')
+    #plt.savefig(png_dir, format = 'png', dpi = gcf().dpi, bbox_inches = 'tight')
     # display the plot
     plt.show()
     ### counting statistcs for spacers per plasmid
-    df_spacers_plasmid = df.groupby('qseqid')['sseqid'].nunique().reset_index(name='Number of spacers')
-    df_spacers_plasmid.to_csv(f'{tables}/Spacers_per_Plasmid_{cutoff}.csv', index = True)
+    df_spacers_plasmid = df.groupby('qseqid')['sseqid'].nunique().reset_index(name = 'Number of spacers')
+    #df_spacers_plasmid.to_csv(f'{tables}/Spacers_per_Plasmid_{cutoff}.csv', index = True)
     print(df_spacers_plasmid.describe())
     # plot the distribution of hits
     # plot the statistics
-    sns.histplot(data = df_spacers_plasmid, bins = 30, x='Number of spacers')
+    sns.histplot(data = df_spacers_plasmid, bins = 30, x = 'Number of spacers')
     # set the title and x-axis label
     plt.title('Distribution of number of spacers for each plasmid')
     plt.xlabel('Number of spacers')
@@ -202,16 +232,16 @@ def get_stats(cutoff):
     png_name = f"SpacersPerPlasmidHisto_{cutoff}.png"
     png_dir = f'{visuals}/{png_name}'
     # plt.autoscale()
-    plt.savefig(svg_dir, format = 'svg', dpi = gcf().dpi, bbox_inches = 'tight')
-    plt.savefig(png_dir, format = 'png', dpi = gcf().dpi, bbox_inches = 'tight')
+    #plt.savefig(svg_dir, format = 'svg', dpi = gcf().dpi, bbox_inches = 'tight')
+    #plt.savefig(png_dir, format = 'png', dpi = gcf().dpi, bbox_inches = 'tight')
     # display the plot
     plt.show()
     ### counting statistcs for plasmids per spacer
-    df_plasmid_spacer = df.groupby('sseqid')['qseqid'].nunique().reset_index(name='Number of plasmids')
-    df_plasmid_spacer.to_csv(f'{tables}/Plasmids_Per_Spacer_{cutoff}.csv', index = True)
+    df_plasmid_spacer = df.groupby('sseqid')['qseqid'].nunique().reset_index(name = 'Number of plasmids')
+    #df_plasmid_spacer.to_csv(f'{tables}/Plasmids_Per_Spacer_{cutoff}.csv', index = True)
     print(df_plasmid_spacer.describe())
     # plot the distribution of hits
-    sns.histplot(data = df_plasmid_spacer, bins =  30, x= 'Number of plasmids')
+    sns.histplot(data = df_plasmid_spacer, bins = 30, x = 'Number of plasmids')
     # set the title and x-axis label
     plt.title('Distribution of plasmids for each spacer')
     plt.xlabel('Number of plasmids')
@@ -220,14 +250,17 @@ def get_stats(cutoff):
     png_name = f"PlasmidsPerSpacerHisto_{cutoff}.png"
     png_dir = f'{visuals}/{png_name}'
     # plt.autoscale()
-    plt.savefig(svg_dir, format = 'svg', dpi = gcf().dpi, bbox_inches = 'tight')
-    plt.savefig(png_dir, format = 'png', dpi = gcf().dpi, bbox_inches = 'tight')
+    #plt.savefig(svg_dir, format = 'svg', dpi = gcf().dpi, bbox_inches = 'tight')
+    #plt.savefig(png_dir, format = 'png', dpi = gcf().dpi, bbox_inches = 'tight')
     # display the plot
     plt.show()
 
-def cutoff():
+
+def cutoff ():
     cutoff = [90, 95, 100]
     for i in cutoff:
         get_stats(i)
 
-#cutoff()
+
+get_stats(100)
+# cutoff()
