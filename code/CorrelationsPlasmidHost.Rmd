@@ -1,0 +1,130 @@
+---
+title: "CRISPR_PlasmidHostCorrelation"
+author: "Lucy Androsiuk"
+date: "2024-05-09"
+output: html_document
+---
+#DESCRIPTION
+In this script we prepare table with correlations between plasmids and potential microbial hosts dedected using CRISPR-spacers alignment method. The tables are prepared for match identity curoffs 90%, 95%, 100%.
+
+Loading necessary libraries
+```{r}
+library(readxl)
+library(tidyr)
+library(stringr)
+library(stats)
+library(scales)
+library(dplyr)
+library(ggplot2)
+library(gridtext)
+library(data.table)
+```
+
+Loading files
+```{r}
+table_90 <- read.csv("/Users/lucyandrosiuk/Documents/bengurion/ProjectStudents/Sivan_project/cutoffs/id_90/match_update_90.csv")
+table_95 <- read.csv("/Users/lucyandrosiuk/Documents/bengurion/ProjectStudents/Sivan_project/cutoffs/id_95/match_update_95.csv")
+table_100 <- read.csv("/Users/lucyandrosiuk/Documents/bengurion/ProjectStudents/Sivan_project/cutoffs/id_100/match_update_100.csv")
+
+all_features <- read.csv("~/Documents/bengurion/ProjectStudents/Sivan_project/data_calculations/all_features.csv")
+prot_100 <- read.csv("~/Documents/bengurion/ProjectStudents/Sivan_project/data_calculations/all_plasmid_matches_within_proteins_100.csv")
+match_update <- read.csv("~/Documents/bengurion/ProjectStudents/Sivan_project/match_update_100.csv")
+shay_features <- read.csv("~/Documents/bengurion/ProjectStudents/Sivan_project/data_calculations/shay_features_100.csv")
+within <- shay_features[shay_features$Within_Feature != 'False',]
+
+# Function to extract text after comma
+extract_after_comma <- function(x) {
+  split_values <- strsplit(as.character(x), ",")
+  sapply(split_values, function(y) ifelse(length(y) > 1, trimws(y[2]), x))
+}
+
+# Apply the function to all columns where values are separated by comma
+within[] <- lapply(within, extract_after_comma)
+within <- select(within, -1)
+write.csv(within, "~/Documents/bengurion/ProjectStudents/Sivan_project/data_calculations/clean_features_100.csv", row.names=FALSE)
+# Read in the data
+all_info <- read.csv("~/Documents/bengurion/ProjectStudents/Sivan_project/data_calculations/all_info_100.csv")
+```
+
+##Convertions for cutoff = 90
+```{r}
+df_90 <- select(table_90, c('qseqid','spacer.host.species'))
+df_90$spacer.host.species <- word(df_90$spacer.host.species, 1,2, sep=" ")
+
+
+# getting unique potential hosts 
+u_df_90 <- df_90 %>% distinct()
+u_dist_df_90 <- u_df_90 %>%
+  group_by(qseqid) %>%
+  summarise(Distribution = n_distinct(spacer.host.species))
+n_distinct(u_df_90$qseqid)
+hosts_90 <- aggregate(spacer.host.species ~ qseqid, u_df_90, paste, collapse = ";")
+table_hosts_90 <- merge(hosts_90, u_dist_df_90)
+write.csv(table_hosts_90, "/Users/lucyandrosiuk/Documents/bengurion/ProjectStudents/Sivan_project/cutoffs/id_90/hosts_90.csv", row.names=FALSE)
+```
+
+##Convertions for cutoff = 95
+```{r}
+df_95 <- select(table_95, c('qseqid','spacer.host.species'))
+df_95$spacer.host.species <- word(df_95$spacer.host.species, 1,2, sep=" ")
+
+
+# getting unique potential hosts 
+u_df_95 <- df_95 %>% distinct()
+u_dist_df_95 <- u_df_95 %>%
+  group_by(qseqid) %>%
+  summarise(Distribution = n_distinct(spacer.host.species))
+n_distinct(u_df_95$qseqid)
+hosts_95 <- aggregate(spacer.host.species ~ qseqid, u_df_95, paste, collapse = ";")
+table_hosts_95 <- merge(hosts_95, u_dist_df_95)
+write.csv(table_hosts_95, "/Users/lucyandrosiuk/Documents/bengurion/ProjectStudents/Sivan_project/cutoffs/id_95/hosts_95.csv", row.names=FALSE)
+
+```
+
+##Convertions for cutoff = 100
+```{r}
+df_100 <- select(table_100, c('qseqid','spacer.host.species'))
+df_100$spacer.host.species <- word(df_100$spacer.host.species, 1,2, sep=" ")
+
+
+# getting unique potential hosts 
+u_df_100 <- df_100 %>% distinct()
+u_dist_df_100 <- u_df_100 %>%
+  group_by(qseqid) %>%
+  summarise(Distribution = n_distinct(spacer.host.species))
+n_distinct(u_df_100$qseqid)
+hosts_100 <- aggregate(spacer.host.species ~ qseqid, u_df_100, paste, collapse = ";")
+table_hosts_100 <- merge(hosts_100, u_dist_df_100)
+write.csv(table_hosts_100, "/Users/lucyandrosiuk/Documents/bengurion/ProjectStudents/Sivan_project/cutoffs/id_100/hosts_100.csv", row.names=FALSE)
+
+```
+
+
+## Plot histograms
+```{r}
+pdf(file="/Users/lucyandrosiuk/Documents/bengurion/ProjectStudents/Sivan_project/cutoffs/id_90/Histogram_90.pdf")
+hist(table_hosts_90$Distribution, breaks = 15,  xlab = "Number of species per plasmid", ylab = "Plasmids", main = NULL)
+dev.off()
+
+pdf(file="/Users/lucyandrosiuk/Documents/bengurion/ProjectStudents/Sivan_project/cutoffs/id_95/Histogram_95.pdf")
+hist(table_hosts_95$Distribution, breaks = 15,  xlab = "Number of species per plasmid", ylab = "Plasmids", main = NULL)
+dev.off()
+
+pdf(file="/Users/lucyandrosiuk/Documents/bengurion/ProjectStudents/Sivan_project/cutoffs/id_100/Histogram_100.pdf")
+hist(table_hosts_100$Distribution, breaks = 15,  xlab = "Number of species per plasmid", ylab = "Plasmids", main = NULL)
+dev.off()
+
+# Set up a side-by-side layout
+pdf(file="/Users/lucyandrosiuk/Documents/bengurion/ProjectStudents/Sivan_project/cutoffs/Histogram_all.pdf")
+par(mfrow = c(1, 3))
+
+hist(table_hosts_90$Distribution, breaks = 15,  xlab = "Number of species per plasmid", ylab = "Plasmids", main = "90% Identity")
+
+hist(table_hosts_95$Distribution, breaks = 15,  xlab = "Number of species per plasmid", ylab = "Plasmids", main = "95% Identity")
+
+hist(table_hosts_100$Distribution, breaks = 15,  xlab = "Number of species per plasmid", ylab = "Plasmids", main = "100% Identity")
+par(mfrow = c(1, 1))
+dev.off()
+
+```
+
